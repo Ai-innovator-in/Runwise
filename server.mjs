@@ -1421,6 +1421,8 @@ async function analyzeWithReasoningModel(text) {
     "Use numeric values without currency symbols.",
     "Use an empty array when a record type is absent.",
     "Return JSON only.",
+    "Examples of Nigerian Pidgin: 'I sell 5 bag of rice for 50k' means 5 bags of rice at ₦50,000 each.",
+    "Examples of African market: 'Customer take goods worth 20k on credit' means a credit sale of ₦20,000.",
     `Business note:\n${text}`,
   ].join("\n\n");
 
