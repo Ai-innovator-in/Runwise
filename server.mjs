@@ -743,6 +743,143 @@ function runProcess(
   });
 }
 
+class ProcessManager {
+  constructor() {
+    this.activeProcess = null;
+    this.activeType = null;
+    this.startTime = null;
+    this.timeoutTimer = null;
+    this.activePromise = null;
+    this.activeResolve = null;
+    this.activeReject = null;
+  }
+
+  acquire(type, binary, args, { timeoutSeconds } = {}) {
+    // If there is an active process, kill it first
+    if (this.activeProcess) {
+      this.killActive();
+    }
+
+    return new Promise((resolve, reject) => {
+      this.activeType = type;
+      this.activeResolve = resolve;
+      this.activeReject = reject;
+      this.startTime = Date.now();
+
+      const child = spawn(binary, args, {
+        cwd: __dirname,
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      this.activeProcess = child;
+
+      const stdout = [];
+      const stderr = [];
+      let outputBytes = 0;
+      let settled = false;
+      const maxOutputBytes = 4 * 1024 * 1024;
+
+      const finish = (callback) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(this.timeoutTimer);
+        callback();
+      };
+
+      const collect = (target) => (chunk) => {
+        outputBytes += chunk.length;
+        if (outputBytes > maxOutputBytes) {
+          child.kill();
+          finish(() =>
+            reject(
+              new Error(
+                "The local AI process produced too much output and was stopped.",
+              ),
+            ),
+          );
+          return;
+        }
+        target.push(chunk);
+      };
+
+      child.stdout.on("data", collect(stdout));
+      child.stderr.on("data", collect(stderr));
+
+      child.on("error", (error) =>
+        finish(() => {
+          this.release();
+          reject(error);
+        }),
+      );
+
+      child.on("exit", (code) =>
+        finish(() => {
+          this.release();
+          const stdoutText = Buffer.concat(stdout).toString("utf8");
+          const stderrText = Buffer.concat(stderr).toString("utf8");
+          if (code !== 0) {
+            const detail =
+              stderrText.trim().slice(-1500) ||
+              stdoutText.trim().slice(-1500) ||
+              `exit code ${code}`;
+            reject(new Error(`Local AI process failed: ${detail}`));
+            return;
+          }
+          resolve({ stdout: stdoutText, stderr: stderrText });
+        }),
+      );
+
+      this.timeoutTimer = setTimeout(() => {
+        child.kill();
+        finish(() => {
+          this.release();
+          reject(
+            new Error(
+              `Local AI process timed out after ${timeoutSeconds} seconds.`,
+            ),
+          );
+        });
+      }, Math.max(1, Number(timeoutSeconds) || 120) * 1000);
+    });
+  }
+
+  killActive() {
+    if (!this.activeProcess) return Promise.resolve();
+
+    return new Promise((resolve) => {
+      const child = this.activeProcess;
+      const killTimer = setTimeout(() => {
+        child.kill("SIGKILL");
+      }, 5000);
+
+      child.on("exit", () => {
+        clearTimeout(killTimer);
+        this.release();
+        resolve();
+      });
+
+      child.kill("SIGTERM");
+    });
+  }
+
+  release() {
+    this.activeProcess = null;
+    this.activeType = null;
+    this.startTime = null;
+    this.timeoutTimer = null;
+    this.activePromise = null;
+    this.activeResolve = null;
+    this.activeReject = null;
+  }
+
+  shutdown() {
+    return this.killActive();
+  }
+}
+
+const manager = new ProcessManager();
+
 function wavDurationSeconds(buffer) {
   if (
     buffer.length < 44 ||
@@ -962,7 +1099,8 @@ async function transcribeAudio(
   );
 
   try {
-    await runProcess(
+    await manager.acquire(
+      'stt',
       configuredPath(
         AI_CONFIG.stt.binary,
       ),
@@ -1437,7 +1575,8 @@ async function analyzeWithReasoningModel(text) {
     );
   }
 
-  const { stdout } = await runProcess(
+  const { stdout } = await manager.acquire(
+    'reasoning',
     configuredPath(AI_CONFIG.reasoning.binary),
     [
       "-m",
@@ -2784,3 +2923,16 @@ server.listen(PORT, () => {
     `MarketOS backend running on http://127.0.0.1:${PORT}`,
   );
 });
+
+// Graceful shutdown
+async function shutdown() {
+  console.log("Shutting down...");
+  await manager.shutdown();
+  server.close(() => {
+    console.log("Server closed.");
+    process.exit(0);
+  });
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
