@@ -1680,6 +1680,7 @@ function commitDraft(data, draft) {
   for (
     const debt of draft.debts || []
   ) {
+    if (debt.status === "Owes business") continue;
     addDebt(
       data,
       debt.customer,
