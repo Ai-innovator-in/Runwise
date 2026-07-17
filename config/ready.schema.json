@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ready"],
+  "properties": {
+    "ready": {
+      "type": "boolean"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release/
+config/ai.json
+data/tmp/
+models/**/*.bin
+models/**/*.gguf
+tools/**/*.exe
+*.log
+.aider*

@@ -1,0 +1,192 @@
+{
+  "version": 2,
+  "users": [
+    {
+      "id": "user_1783869975664_32bb6212",
+      "name": "Daniel",
+      "email": "lanibidaniel@gmail.com",
+      "passwordHash": "f9d37105d14f7bc814d7917ecd8737f6:3d9a196197587a212bc3f89fa97796a66ab1190f4a36a9183eeda645bd2ade36",
+      "createdAt": "2026-07-12T15:26:15.902Z",
+      "data": {
+        "settings": {
+          "businessName": "Ed3hub",
+          "location": "Lagos",
+          "currency": "NGN",
+          "language": "English",
+          "offlineMode": true,
+          "cloudSync": false,
+          "backupLocation": "Local disk",
+          "lastBackup": null
+        },
+        "inventory": [],
+        "customers": [
+          {
+            "id": "cust_1784100641287_eca0c18c",
+            "name": "Musa",
+            "debt": 0,
+            "lastActivity": "2026-07-15",
+            "status": "Paid",
+            "history": [
+              {
+                "date": "2026-07-15",
+                "type": "Payment",
+                "amount": 26000,
+                "note": "Payment recorded from app"
+              },
+              {
+                "date": "2026-07-15",
+                "type": "Credit",
+                "amount": 3000,
+                "note": "Goods worth 3000 on credit."
+              },
+              {
+                "date": "2026-07-15",
+                "type": "Credit",
+                "amount": 10000,
+                "note": "Credit sale"
+              },
+              {
+                "date": "2026-07-15",
+                "type": "Credit",
+                "amount": 3000,
+                "note": "Musu took goods worth 3000 on credit."
+              },
+              {
+                "date": "2026-07-15",
+                "type": "Credit",
+                "amount": 10000,
+                "note": "Credit sale"
+              }
+            ]
+          }
+        ],
+        "sales": [
+          {
+            "id": "sale_1784100660164_675ba72d",
+            "date": "2026-07-15",
+            "product": "Noodles",
+            "quantity": 2,
+            "unitPrice": 5000,
+            "channel": "Credit",
+            "customer": "Musa"
+          },
+          {
+            "id": "sale_1784100641287_774c6d4c",
+            "date": "2026-07-15",
+            "product": "Noodles",
+            "quantity": 2,
+            "unitPrice": 5000,
+            "channel": "Credit",
+            "customer": "Musa"
+          },
+          {
+            "id": "sale_1784013175936_859d1cc6",
+            "date": "2026-07-14",
+            "product": "Bags Of Cement To Musa",
+            "quantity": 15,
+            "unitPrice": 200000,
+            "channel": "Cash",
+            "customer": ""
+          },
+          {
+            "id": "sale_1784013085231_39a5e33a",
+            "date": "2026-07-14",
+            "product": "Bags Of Cement To Musa",
+            "quantity": 15,
+            "unitPrice": 7000,
+            "channel": "Transfer",
+            "customer": ""
+          }
+        ],
+        "expenses": [
+          {
+            "id": "exp_1784100660164_af376e56",
+            "date": "2026-07-15",
+            "category": "Transport",
+            "amount": 1500,
+            "note": "Transport cost for delivery to customer's home address.",
+            "status": "Paid"
+          },
+          {
+            "id": "exp_1784100641288_16d0b153",
+            "date": "2026-07-15",
+            "category": "Transport",
+            "amount": 1500,
+            "note": "Paid transport 1500.",
+            "status": "Paid"
+          },
+          {
+            "id": "exp_1784013237997_741e9c72",
+            "date": "2026-07-14",
+            "category": "15 Bags Of Cement From Musa For",
+            "amount": 2,
+            "note": "15 Bags Of Cement From Musa For",
+            "status": "Paid"
+          }
+        ],
+        "invoices": [],
+        "notes": [
+          {
+            "id": "note_1784100660164_fb5c2ae4",
+            "note": "Sold 2 cartons of noodles at 5000 each. Musa took goods worth 3000 on credit. Paid transport 1500.",
+            "createdAt": "2026-07-15T07:31:00.164Z",
+            "status": "Saved"
+          },
+          {
+            "id": "note_1784100641287_84875cc0",
+            "note": "Sold 2 cartons of noodles at 5000 each. Musa took goods worth 3000 on credit. Paid transport 1500.",
+            "createdAt": "2026-07-15T07:30:41.287Z",
+            "status": "Saved"
+          },
+          {
+            "id": "note_1784013237997_1ae69df6",
+            "note": "I bought 15 bags of cement from Musa for 2,000 naira",
+            "createdAt": "2026-07-14T07:13:57.997Z",
+            "status": "Saved"
+          },
+          {
+            "id": "note_1784013175936_4a6fa576",
+            "note": "I sold 15 bags of cement to Musa for 200,000 naira",
+            "createdAt": "2026-07-14T07:12:55.936Z",
+            "status": "Saved"
+          },
+          {
+            "id": "note_1784013085231_4b204f0c",
+            "note": "I sold 15 bags of cement to Musa for 200,000 naira",
+            "createdAt": "2026-07-14T07:11:25.231Z",
+            "status": "Saved"
+          }
+        ],
+        "knowledge": [],
+        "performance": {
+          "runtime": "local",
+          "model": null,
+          "quantization": null,
+          "contextWindow": null,
+          "threads": null,
+          "ramUsageGb": null,
+          "peakRamGb": null,
+          "tokensPerSecond": null,
+          "extractionSeconds": null,
+          "ragSeconds": null,
+          "cpuTemperatureC": null,
+          "lastBenchmark": null
+        }
+      }
+    }
+  ],
+  "sessions": {
+    "6a19933989c0435c78dd67d682f38592a6e2d9b1b3754ac627577bb7aadd31e0": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-12T15:26:15.902Z"
+    },
+    "68b439a50abc7a6b9e693da2e31042cc8b3ca8c11c46b551501c2a2f223b2877": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-12T19:27:44.097Z"
+    },
+    "3970d774b9f6ccfa00164d6e49630adb0fac097d8ac4f28b1d09859c3120ffbb": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-14T06:55:47.403Z"
+    }
+  }
+}
