@@ -1469,19 +1469,19 @@ async function analyzeWithReasoningModel(text) {
       ),
 
       "--temp",
-      "0.7",
+      "0",
 
       "--top-k",
-      "20",
+      "1",
 
       "--top-p",
-      "0.8",
+      "1",
 
       "--min-p",
       "0",
 
       "--presence-penalty",
-      "1.5",
+      "0",
 
       "--jinja",
 
