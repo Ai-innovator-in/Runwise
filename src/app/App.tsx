@@ -117,14 +117,14 @@ const margin = (item: Product) => Math.round(((item.sellPrice - item.costPrice) 
 
 function Badge({ label, variant = "neutral" }: { label: string; variant?: string }) {
   const styles: Record<string, string> = {
-    neutral: "bg-slate-100 text-slate-700",
-    local: "bg-blue-100 text-blue-700",
-    review: "bg-amber-100 text-amber-800",
-    saved: "bg-green-100 text-green-800",
-    low: "bg-red-100 text-red-700",
-    warning: "bg-amber-100 text-amber-800",
-    danger: "bg-red-100 text-red-800",
-    success: "bg-green-100 text-green-800",
+    neutral: "bg-[#f9f9f6] text-[#1a1c1b]/60 border border-[#1a1c1b]/10",
+    local: "bg-[#005932]/10 text-[#005932] border border-[#005932]/20",
+    review: "bg-[#795900]/10 text-[#795900] border border-[#795900]/20",
+    saved: "bg-[#005932]/10 text-[#005932] border border-[#005932]/20",
+    low: "bg-red-50 text-red-700 border border-red-200",
+    warning: "bg-amber-50 text-amber-800 border border-amber-200",
+    danger: "bg-red-50 text-red-800 border border-red-200",
+    success: "bg-[#005932]/10 text-[#005932] border border-[#005932]/20",
   };
   return <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${styles[variant] || styles.neutral}`}>{label}</span>;
 }
@@ -145,17 +145,17 @@ function Btn({
   type?: "button" | "submit";
 }) {
   const styles = {
-    primary: "bg-[#2563EB] text-white border-transparent hover:bg-blue-700",
-    secondary: "bg-white text-gray-700 border-gray-200 hover:bg-gray-50",
-    ghost: "bg-transparent text-gray-600 border-transparent hover:bg-gray-100",
-    danger: "bg-red-600 text-white border-transparent hover:bg-red-700",
+    primary: "bg-[#005932] text-white border-transparent hover:bg-[#004d2a] shadow-sm",
+    secondary: "bg-white text-[#1a1c1b] border-[#1a1c1b]/20 hover:bg-[#f9f9f6]",
+    ghost: "bg-transparent text-[#1a1c1b]/60 border-transparent hover:bg-[#005932]/5",
+    danger: "bg-red-600 text-white border-transparent hover:bg-red-700 shadow-sm",
   };
   return (
     <button
       type={type}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded px-4 py-2 text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${styles[variant]}`}
+      className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${styles[variant]}`}
     >
       {icon}
       {children}
@@ -165,10 +165,10 @@ function Btn({
 
 function StatCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="bg-white rounded-lg border border-black/[0.07] p-5">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-semibold font-mono tracking-tight mt-1 ${color || "text-gray-900"}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+      <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider">{label}</p>
+      <p className={`text-2xl font-semibold font-mono tracking-tight mt-1 ${color || "text-[#1a1c1b]"}`}>{value}</p>
+      {sub && <p className="text-xs text-[#1a1c1b]/40 mt-1">{sub}</p>}
     </div>
   );
 }
@@ -176,13 +176,13 @@ function StatCard({ label, value, sub, color }: { label: string; value: string; 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium text-gray-500 mb-1">{label}</span>
+      <span className="block text-xs font-medium text-[#1a1c1b]/50 mb-1">{label}</span>
       {children}
     </label>
   );
 }
 
-const inputClass = "w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-800 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500/30";
+const inputClass = "w-full border border-[#1a1c1b]/10 rounded-xl px-3 py-2 text-sm text-[#1a1c1b] bg-white focus:outline-none focus:ring-2 focus:ring-[#005932]/30";
 
 function DashboardScreen({
   data,
@@ -202,8 +202,8 @@ function DashboardScreen({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Live data from the local MarketOS backend</p>
+          <h1 className="text-xl font-semibold text-[#1a1c1b]">Dashboard</h1>
+          <p className="text-sm text-[#1a1c1b]/50 mt-0.5">Live data from the local MarketOS backend</p>
         </div>
         <div className="flex gap-2">
           <Badge label="Offline" variant="success" />
@@ -211,16 +211,56 @@ function DashboardScreen({
         </div>
       </div>
 
+      {/* AI Capability Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <button onClick={() => onNavigate("add-note")} className="bg-white rounded-xl border border-[#005932]/20 p-5 text-left hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-[#005932]/10 flex items-center justify-center">
+              <Zap size={16} className="text-[#005932]" />
+            </div>
+            <span className="text-sm font-semibold text-[#1a1c1b]">Voice Recording</span>
+          </div>
+          <p className="text-xs text-[#1a1c1b]/50 leading-relaxed">Speak your business note. AI transcribes and extracts records automatically.</p>
+          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#005932] group-hover:gap-2 transition-all">
+            Try it <ChevronRight size={12} />
+          </div>
+        </button>
+        <button onClick={() => onNavigate("add-note")} className="bg-white rounded-xl border border-[#005932]/20 p-5 text-left hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-[#005932]/10 flex items-center justify-center">
+              <FileText size={16} className="text-[#005932]" />
+            </div>
+            <span className="text-sm font-semibold text-[#1a1c1b]">Note Analysis</span>
+          </div>
+          <p className="text-xs text-[#1a1c1b]/50 leading-relaxed">Type what happened. AI extracts sales, expenses, and customer data.</p>
+          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#005932] group-hover:gap-2 transition-all">
+            Try it <ChevronRight size={12} />
+          </div>
+        </button>
+        <button onClick={() => onNavigate("coach")} className="bg-white rounded-xl border border-[#005932]/20 p-5 text-left hover:shadow-md transition-shadow group">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-[#005932]/10 flex items-center justify-center">
+              <BarChart2 size={16} className="text-[#005932]" />
+            </div>
+            <span className="text-sm font-semibold text-[#1a1c1b]">Business Coach</span>
+          </div>
+          <p className="text-xs text-[#1a1c1b]/50 leading-relaxed">Get AI-powered recommendations based on your business data.</p>
+          <div className="mt-3 flex items-center gap-1 text-xs font-medium text-[#005932] group-hover:gap-2 transition-all">
+            Try it <ChevronRight size={12} />
+          </div>
+        </button>
+      </div>
+
       <div className="grid grid-cols-4 gap-4">
         <StatCard label="Today's Sales" value={formatMoney(Number(summary.salesTotal))} sub={`${data.sales.length} total sale records`} />
         <StatCard label="Expenses Today" value={formatMoney(Number(summary.expensesTotal))} color="text-red-600" />
-        <StatCard label="Cash Received" value={formatMoney(Number(summary.cashReceived))} color="text-green-600" />
-        <StatCard label="Customer Debt" value={formatMoney(Number(summary.customerDebt))} color="text-amber-600" />
+        <StatCard label="Cash Received" value={formatMoney(Number(summary.cashReceived))} color="text-[#005932]" />
+        <StatCard label="Customer Debt" value={formatMoney(Number(summary.customerDebt))} color="text-[#795900]" />
       </div>
 
-      <div className="bg-white rounded-lg border border-black/[0.07] p-5">
-        <h3 className="font-semibold text-gray-900 mb-1">What happened in your business today?</h3>
-        <p className="text-sm text-gray-500 mb-3">The backend extracts records, then you review and save them to the ledger.</p>
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h3 className="font-semibold text-[#1a1c1b] mb-1">What happened in your business today?</h3>
+        <p className="text-sm text-[#1a1c1b]/50 mb-3">The backend extracts records, then you review and save them to the ledger.</p>
         <textarea
           className={`${inputClass} h-28 resize-none`}
           placeholder="Type what happened, or record a voice note..."
@@ -237,39 +277,39 @@ function DashboardScreen({
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg border border-black/[0.07] p-5">
-          <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Alerts</h2>
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Alerts</h2>
           <div className="space-y-2">
             {(summary.alerts as string[]).map((alert) => (
-              <button key={alert} onClick={() => onNavigate(alert.includes("owes") ? "customers" : "inventory")} className="w-full text-left flex items-start gap-2.5 p-2.5 rounded-md bg-gray-50 border border-black/[0.05]">
-                <AlertTriangle size={14} className="text-amber-500 mt-0.5" />
-                <span className="text-sm text-gray-700">{alert}</span>
+              <button key={alert} onClick={() => onNavigate(alert.includes("owes") ? "customers" : "inventory")} className="w-full text-left flex items-start gap-2.5 p-2.5 rounded-xl bg-[#f9f9f6] border border-[#1a1c1b]/5">
+                <AlertTriangle size={14} className="text-[#795900] mt-0.5" />
+                <span className="text-sm text-[#1a1c1b]">{alert}</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-black/[0.07] p-5 col-span-2">
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 col-span-2 shadow-sm">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Recent Activity</h2>
+            <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider">Recent Activity</h2>
             <Btn variant="ghost" onClick={() => onNavigate("reports")}>Open reports</Btn>
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left text-xs font-medium text-gray-400 uppercase pb-2">Type</th>
-                <th className="text-left text-xs font-medium text-gray-400 uppercase pb-2">Description</th>
-                <th className="text-right text-xs font-medium text-gray-400 uppercase pb-2">Amount</th>
-                <th className="text-left text-xs font-medium text-gray-400 uppercase pb-2 pl-4">Date</th>
+              <tr className="border-b border-[#1a1c1b]/5">
+                <th className="text-left text-xs font-medium text-[#1a1c1b]/40 uppercase pb-2">Type</th>
+                <th className="text-left text-xs font-medium text-[#1a1c1b]/40 uppercase pb-2">Description</th>
+                <th className="text-right text-xs font-medium text-[#1a1c1b]/40 uppercase pb-2">Amount</th>
+                <th className="text-left text-xs font-medium text-[#1a1c1b]/40 uppercase pb-2 pl-4">Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-[#1a1c1b]/5">
               {data.recentActivity.map((row) => (
                 <tr key={row.id}>
                   <td className="py-2.5 pr-4"><Badge label={row.type} variant={row.type === "Expense" ? "danger" : row.type === "Sale" ? "success" : "warning"} /></td>
-                  <td className="py-2.5 text-gray-700">{row.description}</td>
-                  <td className={`py-2.5 text-right font-mono font-medium ${row.amount < 0 ? "text-red-600" : "text-green-600"}`}>{formatMoney(row.amount)}</td>
-                  <td className="py-2.5 pl-4 text-gray-400 text-xs">{row.date}</td>
+                  <td className="py-2.5 text-[#1a1c1b]">{row.description}</td>
+                  <td className={`py-2.5 text-right font-mono font-medium ${row.amount < 0 ? "text-red-600" : "text-[#005932]"}`}>{formatMoney(row.amount)}</td>
+                  <td className="py-2.5 pl-4 text-[#1a1c1b]/40 text-xs">{row.date}</td>
                 </tr>
               ))}
             </tbody>
@@ -284,10 +324,10 @@ function AddNoteScreen({ note, setNote, onAnalyze }: { note: string; setNote: (v
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Add Business Note</h1>
-        <p className="text-sm text-gray-500 mt-0.5">This sends your note to the local backend extractor. Nothing is saved until you approve the review screen.</p>
+        <h1 className="text-xl font-semibold text-[#1a1c1b]">Add Business Note</h1>
+        <p className="text-sm text-[#1a1c1b]/50 mt-0.5">This sends your note to the local backend extractor. Nothing is saved until you approve the review screen.</p>
       </div>
-      <div className="bg-white rounded-lg border border-black/[0.07] p-6 space-y-4">
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 space-y-4 shadow-sm">
         <textarea
           className={`${inputClass} h-44 resize-none`}
           placeholder="Type what happened, or use Record Voice below..."
@@ -309,9 +349,9 @@ function AddNoteScreen({ note, setNote, onAnalyze }: { note: string; setNote: (v
 function ReviewScreen({ draft, setDraft, onCommit, onNavigate }: { draft: Draft | null; setDraft: (draft: Draft) => void; onCommit: () => void; onNavigate: (screen: ScreenId) => void }) {
   if (!draft) {
     return (
-      <div className="max-w-xl mx-auto bg-white rounded-lg border border-black/[0.07] p-8 text-center">
-        <h1 className="text-xl font-semibold text-gray-900">Review Extracted Records</h1>
-        <p className="text-sm text-gray-500 mt-2 mb-4">Analyze a business note first. The backend will return a draft for review here.</p>
+      <div className="max-w-xl mx-auto bg-white rounded-xl border border-[#1a1c1b]/8 p-8 text-center shadow-sm">
+        <h1 className="text-xl font-semibold text-[#1a1c1b]">Review Extracted Records</h1>
+        <p className="text-sm text-[#1a1c1b]/50 mt-2 mb-4">Analyze a business note first. The backend will return a draft for review here.</p>
         <Btn onClick={() => onNavigate("add-note")} icon={<PlusSquare size={14} />}>Add Business Note</Btn>
       </div>
     );
@@ -340,14 +380,14 @@ function ReviewScreen({ draft, setDraft, onCommit, onNavigate }: { draft: Draft 
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Review Extracted Records</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Edit any backend-extracted value before saving to the ledger.</p>
+          <h1 className="text-xl font-semibold text-[#1a1c1b]">Review Extracted Records</h1>
+          <p className="text-sm text-[#1a1c1b]/50 mt-0.5">Edit any backend-extracted value before saving to the ledger.</p>
         </div>
         <Badge label="Needs Review" variant="review" />
       </div>
 
       {draft.inference && (
-        <div className={`rounded-md border px-4 py-3 text-sm ${draft.inference.warning ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-blue-50 border-blue-100 text-blue-800"}`}>
+        <div className={`rounded-xl border px-4 py-3 text-sm ${draft.inference.warning ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-[#005932]/5 border-[#005932]/20 text-[#005932]"}`}>
           <span className="font-medium">Extraction engine:</span> {draft.inference.engine}
           {draft.inference.model ? ` · ${draft.inference.model}` : ""}
           {draft.inference.warning && <p className="text-xs mt-1 leading-relaxed">{draft.inference.warning}</p>}
@@ -389,7 +429,7 @@ function ReviewScreen({ draft, setDraft, onCommit, onNavigate }: { draft: Draft 
         ])}
       />
 
-      <div className="bg-white rounded-lg border border-black/[0.07] p-5 flex items-center justify-between">
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 flex items-center justify-between shadow-sm">
         <div className="grid grid-cols-4 gap-6 text-sm">
           <SummaryItem label="Total Sales" value={formatMoney(salesTotal)} />
           <SummaryItem label="Expenses" value={formatMoney(expensesTotal)} />
@@ -404,13 +444,13 @@ function ReviewScreen({ draft, setDraft, onCommit, onNavigate }: { draft: Draft 
 
 function EditableTable({ title, columns, rows }: { title: string; columns: string[]; rows: ReactNode[][] }) {
   return (
-    <div className="bg-white rounded-lg border border-black/[0.07] overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-100"><h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">{title}</h2></div>
+    <div className="bg-white rounded-xl border border-[#1a1c1b]/8 overflow-hidden shadow-sm">
+      <div className="px-5 py-3 border-b border-[#1a1c1b]/5"><h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider">{title}</h2></div>
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-100">
-          <tr>{columns.map((column) => <th key={column} className="px-4 py-2.5 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">{column}</th>)}</tr>
+        <thead className="bg-[#f9f9f6] border-b border-[#1a1c1b]/5">
+          <tr>{columns.map((column) => <th key={column} className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">{column}</th>)}</tr>
         </thead>
-        <tbody>{rows.map((row, index) => <tr key={index} className="border-b border-gray-50">{row.map((cell, cellIndex) => <td key={cellIndex} className="px-4 py-2.5">{cell}</td>)}</tr>)}</tbody>
+        <tbody>{rows.map((row, index) => <tr key={index} className="border-b border-[#1a1c1b]/5">{row.map((cell, cellIndex) => <td key={cellIndex} className="px-4 py-2.5">{cell}</td>)}</tr>)}</tbody>
       </table>
     </div>
   );
@@ -419,8 +459,8 @@ function EditableTable({ title, columns, rows }: { title: string; columns: strin
 function SummaryItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className="font-mono font-semibold text-gray-900 mt-1">{value}</p>
+      <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider">{label}</p>
+      <p className="font-mono font-semibold text-[#1a1c1b] mt-1">{value}</p>
     </div>
   );
 }
@@ -430,7 +470,7 @@ function SalesScreen({ data, refresh }: { data: AppData; refresh: (payload?: App
   const submit = async () => refresh(await api<AppData>("/api/sales", { method: "POST", body: JSON.stringify(form) }));
   return (
     <LedgerScreen title="Sales" action={<Btn onClick={submit} icon={<ShoppingCart size={14} />}>Record Sale</Btn>}>
-      <div className="grid grid-cols-5 gap-3 bg-white rounded-lg border border-black/[0.07] p-4">
+      <div className="grid grid-cols-5 gap-3 bg-white rounded-xl border border-[#1a1c1b]/8 p-4 shadow-sm">
         <Field label="Product"><input className={inputClass} value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })} /></Field>
         <Field label="Quantity"><input className={inputClass} type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} /></Field>
         <Field label="Unit Price"><input className={inputClass} type="number" value={form.unitPrice} onChange={(e) => setForm({ ...form, unitPrice: Number(e.target.value) })} /></Field>
@@ -447,7 +487,7 @@ function ExpensesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   const submit = async () => refresh(await api<AppData>("/api/expenses", { method: "POST", body: JSON.stringify(form) }));
   return (
     <LedgerScreen title="Expenses" action={<Btn onClick={submit} icon={<Receipt size={14} />}>Record Expense</Btn>}>
-      <div className="grid grid-cols-4 gap-3 bg-white rounded-lg border border-black/[0.07] p-4">
+      <div className="grid grid-cols-4 gap-3 bg-white rounded-xl border border-[#1a1c1b]/8 p-4 shadow-sm">
         <Field label="Category"><input className={inputClass} value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} /></Field>
         <Field label="Amount"><input className={inputClass} type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} /></Field>
         <Field label="Note"><input className={inputClass} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
@@ -472,14 +512,14 @@ function InventoryScreen({ data, refresh }: { data: AppData; refresh: (payload?:
         <StatCard label="Fast Moving Items" value={String(data.summary.fastMovingItems)} />
         <StatCard label="Stock Value" value={formatMoney(Number(data.summary.inventoryValue))} />
       </div>
-      <div className="grid grid-cols-5 gap-3 bg-white rounded-lg border border-black/[0.07] p-4">
+      <div className="grid grid-cols-5 gap-3 bg-white rounded-xl border border-[#1a1c1b]/8 p-4 shadow-sm">
         <Field label="Product"><select className={inputClass} value={form.product} onChange={(e) => setForm({ ...form, product: e.target.value })}><option value="">Select product</option>{data.inventory.map((item) => <option key={item.id}>{item.name}</option>)}</select></Field>
         <Field label="Quantity"><input className={inputClass} type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })} /></Field>
         <Field label="New Cost Price"><input className={inputClass} type="number" value={form.costPrice} onChange={(e) => setForm({ ...form, costPrice: Number(e.target.value) })} /></Field>
         <div className="flex items-end"><Btn onClick={() => mutate("/api/inventory/stock")}>Add Stock</Btn></div>
         <div className="flex items-end"><Btn variant="danger" onClick={() => mutate("/api/inventory/damaged")}>Record Damaged</Btn></div>
       </div>
-      <div className="grid grid-cols-5 gap-3 bg-white rounded-lg border border-black/[0.07] p-4">
+      <div className="grid grid-cols-5 gap-3 bg-white rounded-xl border border-[#1a1c1b]/8 p-4 shadow-sm">
         <Field label="New Product"><input className={inputClass} value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} /></Field>
         <Field label="Opening Stock"><input className={inputClass} type="number" value={newProduct.stock} onChange={(e) => setNewProduct({ ...newProduct, stock: Number(e.target.value) })} /></Field>
         <Field label="Cost Price"><input className={inputClass} type="number" value={newProduct.costPrice} onChange={(e) => setNewProduct({ ...newProduct, costPrice: Number(e.target.value) })} /></Field>
@@ -503,18 +543,18 @@ function CustomersScreen({ data, refresh }: { data: AppData; refresh: (payload?:
       <Header title="Customers & Debt" subtitle="Payments and reminders are generated by the backend from current customer balances." />
       <div className="grid grid-cols-3 gap-4">
         <StatCard label="Total Outstanding" value={formatMoney(Number(data.summary.customerDebt))} color="text-red-600" />
-        <StatCard label="Overdue Debt" value={formatMoney(Number(data.summary.overdueDebt))} color="text-amber-600" />
+        <StatCard label="Overdue Debt" value={formatMoney(Number(data.summary.overdueDebt))} color="text-[#795900]" />
         <StatCard label="Customers Owing" value={String(data.summary.customersOwing)} />
       </div>
       <div className="grid grid-cols-3 gap-5">
         <div className="col-span-2"><DataTable columns={["Customer", "Amount Owed", "Last Activity", "Status"]} rows={data.customers.map((row) => [row.name, formatMoney(row.debt), row.lastActivity, row.status])} /></div>
-        <div className="bg-white rounded-lg border border-black/[0.07] p-5 space-y-3">
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 space-y-3 shadow-sm">
           <Field label="Customer"><select className={inputClass} value={customerId} onChange={(e) => setCustomerId(e.target.value)}><option value="">Select customer</option>{data.customers.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></Field>
           <Field label="Payment Amount"><input className={inputClass} type="number" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></Field>
           <div className="flex gap-2"><Btn disabled={!customerId} onClick={recordPayment}>Record Payment</Btn><Btn disabled={!customerId} variant="secondary" onClick={generateReminder} icon={<Send size={14} />}>Reminder</Btn></div>
-          {!data.customers.length && <div className="p-3 bg-gray-50 border border-gray-100 rounded-md text-sm text-gray-600">No customers yet. Customer debt records will appear after you save a credit sale or credit note.</div>}
-          {reminder && <div className="p-3 bg-blue-50 border border-blue-100 rounded-md text-sm text-blue-800">{reminder}</div>}
-          {customer && <div className="pt-3 border-t border-gray-100"><p className="text-xs font-semibold text-gray-500 uppercase mb-2">History</p>{customer.history.map((item, index) => <p key={index} className="text-xs text-gray-600 mb-1">{item.date}: {item.type} {formatMoney(item.amount)} - {item.note}</p>)}</div>}
+          {!data.customers.length && <div className="p-3 bg-[#f9f9f6] border border-[#1a1c1b]/5 rounded-xl text-sm text-[#1a1c1b]/60">No customers yet. Customer debt records will appear after you save a credit sale or credit note.</div>}
+          {reminder && <div className="p-3 bg-[#005932]/5 border border-[#005932]/20 rounded-xl text-sm text-[#005932]">{reminder}</div>}
+          {customer && <div className="pt-3 border-t border-[#1a1c1b]/5"><p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase mb-2">History</p>{customer.history.map((item, index) => <p key={index} className="text-xs text-[#1a1c1b]/60 mb-1">{item.date}: {item.type} {formatMoney(item.amount)} - {item.note}</p>)}</div>}
         </div>
       </div>
     </div>
@@ -534,7 +574,7 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
     <div className="space-y-5">
       <Header title="Invoice Generator" subtitle="Invoices are saved by the backend and export as a PDF file." />
       <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg border border-black/[0.07] p-6 space-y-3">
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 space-y-3 shadow-sm">
           {Object.entries(form).map(([key, value]) => (
             <Field key={key} label={key.replace(/([A-Z])/g, " $1")}>
               <input className={inputClass} type={typeof value === "number" ? "number" : key === "dueDate" ? "date" : "text"} value={value} onChange={(e) => setForm({ ...form, [key]: typeof value === "number" ? Number(e.target.value) : e.target.value })} />
@@ -545,18 +585,18 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
             <Btn variant="secondary" disabled={!savedInvoice} onClick={() => savedInvoice && window.open(`/api/invoices/${savedInvoice.id}/pdf`, "_blank")} icon={<Download size={14} />}>Export PDF</Btn>
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-black/[0.07] p-6">
-          <div className="border-b border-gray-100 pb-4 mb-4 flex justify-between">
-            <div><h2 className="text-lg font-bold text-gray-900">{String(data.settings.businessName)}</h2><p className="text-xs text-gray-400">{String(data.settings.location)}</p></div>
-            <div className="text-right"><p className="text-xs text-gray-400 font-mono">{savedInvoice?.number || "Unsaved invoice"}</p><p className="text-xs text-amber-600">Due: {form.dueDate}</p></div>
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 shadow-sm">
+          <div className="border-b border-[#1a1c1b]/5 pb-4 mb-4 flex justify-between">
+            <div><h2 className="text-lg font-bold text-[#1a1c1b]">{String(data.settings.businessName)}</h2><p className="text-xs text-[#1a1c1b]/40">{String(data.settings.location)}</p></div>
+            <div className="text-right"><p className="text-xs text-[#1a1c1b]/40 font-mono">{savedInvoice?.number || "Unsaved invoice"}</p><p className="text-xs text-[#795900]">Due: {form.dueDate}</p></div>
           </div>
-          <p className="text-xs text-gray-500 mb-1">Bill To</p>
-          <p className="font-semibold text-gray-800 mb-4">{form.customerName}</p>
+          <p className="text-xs text-[#1a1c1b]/50 mb-1">Bill To</p>
+          <p className="font-semibold text-[#1a1c1b] mb-4">{form.customerName}</p>
           <DataTable compact columns={["Item", "Qty", "Unit", "Total"]} rows={[[form.item, form.quantity, formatMoney(form.unitPrice), formatMoney(subtotal)]]} />
-          <div className="border-t border-gray-100 pt-3 mt-3 space-y-1 text-sm">
+          <div className="border-t border-[#1a1c1b]/5 pt-3 mt-3 space-y-1 text-sm">
             <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatMoney(subtotal)}</span></div>
-            <div className="flex justify-between text-green-700"><span>Amount Paid</span><span className="font-mono">-{formatMoney(form.amountPaid)}</span></div>
-            <div className="flex justify-between font-bold text-gray-900 text-base pt-1 border-t border-gray-200"><span>Balance Due</span><span className="font-mono text-red-600">{formatMoney(subtotal - form.amountPaid)}</span></div>
+            <div className="flex justify-between text-[#005932]"><span>Amount Paid</span><span className="font-mono">-{formatMoney(form.amountPaid)}</span></div>
+            <div className="flex justify-between font-bold text-[#1a1c1b] text-base pt-1 border-t border-[#1a1c1b]/10"><span>Balance Due</span><span className="font-mono text-red-600">{formatMoney(subtotal - form.amountPaid)}</span></div>
           </div>
         </div>
       </div>
@@ -575,8 +615,8 @@ function ReportsScreen({ data }: { data: AppData }) {
       <div className="grid grid-cols-4 gap-4">
         <StatCard label="Gross Sales" value={formatMoney(grossSales)} />
         <StatCard label="Expenses" value={formatMoney(totalExpenses)} color="text-red-600" />
-        <StatCard label="Estimated Net" value={formatMoney(net)} color="text-green-600" />
-        <StatCard label="Debt Ratio" value={`${debtRatio.toFixed(1)}%`} color="text-amber-600" />
+        <StatCard label="Estimated Net" value={formatMoney(net)} color="text-[#005932]" />
+        <StatCard label="Debt Ratio" value={`${debtRatio.toFixed(1)}%`} color="text-[#795900]" />
       </div>
       <DataTable columns={["Metric", "Value", "Source"]} rows={[["Gross Sales", formatMoney(grossSales), "Sales ledger"], ["Expenses", formatMoney(totalExpenses), "Expense ledger"], ["Customer Debt", formatMoney(Number(data.summary.customerDebt)), "Customer balances"], ["Inventory Value", formatMoney(Number(data.summary.inventoryValue)), "Inventory stock x cost"]]} />
     </div>
@@ -590,11 +630,11 @@ function CoachScreen() {
   return (
     <div className="max-w-3xl mx-auto space-y-5">
       <Header title="Business Coach" subtitle="Answers are generated from backend ledger, inventory, and debt records." />
-      <div className="bg-white rounded-lg border border-black/[0.07] p-5 space-y-3">
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 space-y-3 shadow-sm">
         <Field label="Ask about your business"><input className={inputClass} value={question} onChange={(e) => setQuestion(e.target.value)} /></Field>
         <Btn onClick={ask} icon={<Zap size={14} />}>Ask AI Coach</Btn>
       </div>
-      {answer && <div className="bg-white rounded-lg border border-black/[0.07] p-5 text-sm text-gray-800"><Badge label={answer.basedOn} variant="local" /><ol className="list-decimal ml-5 mt-3 space-y-2">{answer.answer.map((item) => <li key={item}>{item}</li>)}</ol><div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-md text-blue-800">{answer.recommendedAction}</div></div>}
+      {answer && <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 text-sm text-[#1a1c1b] shadow-sm"><Badge label={answer.basedOn} variant="local" /><ol className="list-decimal ml-5 mt-3 space-y-2">{answer.answer.map((item) => <li key={item}>{item}</li>)}</ol><div className="mt-4 p-3 bg-[#005932]/5 border border-[#005932]/20 rounded-xl text-[#005932]">{answer.recommendedAction}</div></div>}
     </div>
   );
 }
@@ -607,10 +647,10 @@ function KnowledgeScreen({ data }: { data: AppData }) {
     <div className="space-y-5">
       <Header title="Knowledge Base" subtitle="Search runs against local backend knowledge records." />
       <div className="grid grid-cols-3 gap-5">
-        <div className="bg-white rounded-lg border border-black/[0.07] p-5"><h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-3">Local Guides</h2>{data.knowledge.map((item) => <p key={item.id} className="text-sm text-gray-700 py-2 border-b border-gray-50">{item.title}</p>)}</div>
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm"><h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Local Guides</h2>{data.knowledge.map((item) => <p key={item.id} className="text-sm text-[#1a1c1b] py-2 border-b border-[#1a1c1b]/5">{item.title}</p>)}</div>
         <div className="col-span-2 space-y-4">
-          <div className="bg-white rounded-lg border border-black/[0.07] p-5 flex gap-2"><input className={inputClass} value={query} onChange={(e) => setQuery(e.target.value)} /><Btn onClick={search} icon={<Search size={14} />}>Search</Btn></div>
-          {result && <div className="bg-white rounded-lg border border-black/[0.07] p-5"><Badge label="Offline Knowledge" variant="local" /><p className="text-sm text-gray-700 leading-relaxed mt-3">{result.answer}</p><div className="flex gap-2 mt-4">{result.sources.map((source) => <Badge key={source} label={source} variant="saved" />)}</div></div>}
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 flex gap-2 shadow-sm"><input className={inputClass} value={query} onChange={(e) => setQuery(e.target.value)} /><Btn onClick={search} icon={<Search size={14} />}>Search</Btn></div>
+          {result && <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm"><Badge label="Offline Knowledge" variant="local" /><p className="text-sm text-[#1a1c1b] leading-relaxed mt-3">{result.answer}</p><div className="flex gap-2 mt-4">{result.sources.map((source) => <Badge key={source} label={source} variant="saved" />)}</div></div>}
         </div>
       </div>
     </div>
@@ -643,7 +683,7 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   return (
     <div className="space-y-5">
       <Header title="Settings" subtitle="Saved settings are persisted in the backend JSON database." />
-      <div className="bg-white rounded-lg border border-black/[0.07] p-5 grid grid-cols-2 gap-4">
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 grid grid-cols-2 gap-4 shadow-sm">
         {["businessName", "location", "currency", "language", "backupLocation"].map((key) => (
           <Field key={key} label={key.replace(/([A-Z])/g, " $1")}><input className={inputClass} value={String(form[key] ?? "")} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></Field>
         ))}
@@ -665,22 +705,22 @@ function LedgerScreen({ title, action, children }: { title: string; action: Reac
 function Header({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div>
-      <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-      <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
+      <h1 className="text-xl font-semibold text-[#1a1c1b]">{title}</h1>
+      <p className="text-sm text-[#1a1c1b]/50 mt-0.5">{subtitle}</p>
     </div>
   );
 }
 
 function DataTable({ columns, rows, compact }: { columns: string[]; rows: Array<Array<ReactNode>>; compact?: boolean }) {
   return (
-    <div className="bg-white rounded-lg border border-black/[0.07] overflow-hidden">
+    <div className="bg-white rounded-xl border border-[#1a1c1b]/8 overflow-hidden shadow-sm">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b border-gray-100">
-          <tr>{columns.map((column) => <th key={column} className={`${compact ? "px-3 py-2" : "px-5 py-3"} text-left text-xs font-medium text-gray-400 uppercase tracking-wider`}>{column}</th>)}</tr>
+        <thead className="bg-[#f9f9f6] border-b border-[#1a1c1b]/5">
+          <tr>{columns.map((column) => <th key={column} className={`${compact ? "px-3 py-2" : "px-5 py-3"} text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider`}>{column}</th>)}</tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
-          {rows.length ? rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex} className={`${compact ? "px-3 py-2" : "px-5 py-3.5"} text-gray-700`}>{cell}</td>)}</tr>) : (
-            <tr><td colSpan={columns.length} className={`${compact ? "px-3 py-3" : "px-5 py-6"} text-center text-sm text-gray-400`}>No records yet.</td></tr>
+        <tbody className="divide-y divide-[#1a1c1b]/5">
+          {rows.length ? rows.map((row, index) => <tr key={index}>{row.map((cell, cellIndex) => <td key={cellIndex} className={`${compact ? "px-3 py-2" : "px-5 py-3.5"} text-[#1a1c1b]`}>{cell}</td>)}</tr>) : (
+            <tr><td colSpan={columns.length} className={`${compact ? "px-3 py-3" : "px-5 py-6"} text-center text-sm text-[#1a1c1b]/40`}>No records yet.</td></tr>
           )}
         </tbody>
       </table>
@@ -690,19 +730,28 @@ function DataTable({ columns, rows, compact }: { columns: string[]; rows: Array<
 
 function Sidebar({ active, onNavigate }: { active: ScreenId; onNavigate: (screen: ScreenId) => void }) {
   return (
-    <aside className="w-56 shrink-0 flex flex-col h-full overflow-y-auto bg-[#0F172A]">
+    <aside className="w-60 shrink-0 flex flex-col h-full overflow-y-auto bg-[#1a1c1b]">
       <div className="px-4 py-5 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2 mb-0.5"><div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center"><Zap size={13} className="text-white" /></div><span className="text-sm font-bold text-white">MarketOS</span></div>
-        <span className="text-xs text-slate-500 ml-8">Offline Business OS</span>
+        <div className="flex items-center gap-2 mb-0.5"><div className="w-6 h-6 rounded bg-[#005932] flex items-center justify-center"><Zap size={13} className="text-white" /></div><span className="text-sm font-bold text-white">MarketOS</span></div>
+        <span className="text-xs text-white/40 ml-8">Intelligent Precision</span>
       </div>
       <nav className="flex-1 px-2 py-3 space-y-0.5">
         {NAV_ITEMS.map((item) => (
-          <button key={item.id} onClick={() => onNavigate(item.id)} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-left transition-colors ${active === item.id ? "bg-blue-600 text-white font-medium" : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"}`}>
+          <button key={item.id} onClick={() => onNavigate(item.id)} className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-left transition-colors ${active === item.id ? "bg-[#005932] text-white font-medium" : "text-white/50 hover:text-white hover:bg-white/5"}`}>
             <span>{item.icon}</span>{item.label}
           </button>
         ))}
       </nav>
-      <div className="px-4 py-4 border-t border-white/[0.06]"><div className="flex items-center gap-2 text-xs text-slate-500"><div className="w-1.5 h-1.5 rounded-full bg-green-500" />Backend API connected</div></div>
+      <div className="px-4 py-4 border-t border-white/[0.06]">
+        <div className="flex items-center gap-2 text-xs text-white/40">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#005932]" />
+          AI Ready
+        </div>
+        <div className="flex items-center gap-2 text-xs text-white/40 mt-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          Backend API connected
+        </div>
+      </div>
     </aside>
   );
 }
@@ -711,9 +760,9 @@ function TopBar({ data, onSignOut }: { data: AppData; onSignOut: () => void }) {
   const businessName = String(data.settings.businessName || "Untitled Business");
   const location = String(data.settings.location || "No location set");
   return (
-    <header className="h-14 bg-white border-b border-black/[0.07] flex items-center justify-between px-5 shrink-0">
-      <div><p className="text-xs font-semibold text-blue-700">MarketOS Offline</p><p className="text-xs text-gray-400">{businessName} · {location}</p></div>
-      <div className="flex items-center gap-3"><Badge label="Offline Mode Active" variant="success" /><Badge label="Local API Running" variant="local" /><Bell size={16} className="text-gray-500" /><Btn variant="ghost" onClick={onSignOut}>Sign out</Btn></div>
+    <header className="h-14 bg-white border-b border-[#1a1c1b]/8 flex items-center justify-between px-5 shrink-0">
+      <div><p className="text-xs font-semibold text-[#005932]">MarketOS Offline</p><p className="text-xs text-[#1a1c1b]/40">{businessName} · {location}</p></div>
+      <div className="flex items-center gap-3"><Badge label="Offline Mode Active" variant="success" /><Badge label="Local API Running" variant="local" /><Bell size={16} className="text-[#1a1c1b]/40" /><Btn variant="ghost" onClick={onSignOut}>Sign out</Btn></div>
     </header>
   );
 }
@@ -726,14 +775,14 @@ function AIPanel({ screen, data, onNavigate }: { screen: ScreenId; data: AppData
     return `Today: ${formatMoney(Number(data.summary.salesTotal))} sales, ${formatMoney(Number(data.summary.expensesTotal))} expenses, ${formatMoney(Number(data.summary.cashReceived))} cash received.`;
   }, [data, screen]);
   return (
-    <aside className="w-64 shrink-0 border-l border-black/[0.07] bg-white flex flex-col">
-      <div className="px-4 py-3.5 border-b border-gray-100 flex items-center gap-2"><Zap size={14} className="text-blue-600" /><span className="text-xs font-semibold text-gray-700">Backend Assistant</span><Badge label="Local" variant="local" /></div>
+    <aside className="w-64 shrink-0 border-l border-[#1a1c1b]/8 bg-white flex flex-col">
+      <div className="px-4 py-3.5 border-b border-[#1a1c1b]/5 flex items-center gap-2"><Zap size={14} className="text-[#005932]" /><span className="text-xs font-semibold text-[#1a1c1b]">Backend Assistant</span><Badge label="Local" variant="local" /></div>
       <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto">
-        <div className="p-3.5 rounded-lg bg-blue-50 border border-blue-100"><p className="text-xs text-blue-700 leading-relaxed">{body}</p></div>
+        <div className="p-3.5 rounded-xl bg-[#005932]/5 border border-[#005932]/20"><p className="text-xs text-[#005932] leading-relaxed">{body}</p></div>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">Quick Actions</p>
+          <p className="text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Quick Actions</p>
           {[["Add note", "add-note"], ["Customers", "customers"], ["Inventory", "inventory"]].map(([label, target]) => (
-            <button key={target} onClick={() => onNavigate(target as ScreenId)} className="w-full text-left px-3 py-2 rounded-md border border-gray-100 text-xs text-gray-600 hover:bg-gray-50 flex items-center justify-between">{label}<ChevronRight size={11} /></button>
+            <button key={target} onClick={() => onNavigate(target as ScreenId)} className="w-full text-left px-3 py-2 rounded-xl border border-[#1a1c1b]/10 text-xs text-[#1a1c1b]/60 hover:bg-[#f9f9f6] flex items-center justify-between">{label}<ChevronRight size={11} /></button>
           ))}
         </div>
       </div>
@@ -765,17 +814,17 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => P
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] grid place-items-center p-6">
-      <div className="w-full max-w-md bg-white rounded-lg border border-black/[0.07] p-6 shadow-sm">
+    <div className="min-h-screen bg-[#f9f9f6] grid place-items-center p-6">
+      <div className="w-full max-w-md bg-white rounded-xl border border-[#1a1c1b]/8 p-6 shadow-sm">
         <div className="mb-6">
-          <div className="w-9 h-9 rounded bg-blue-600 flex items-center justify-center mb-3"><Zap size={18} className="text-white" /></div>
-          <h1 className="text-xl font-semibold text-gray-900">MarketOS Offline</h1>
-          <p className="text-sm text-gray-500 mt-1">Create an account or sign in to your local business workspace.</p>
+          <div className="w-9 h-9 rounded bg-[#005932] flex items-center justify-center mb-3"><Zap size={18} className="text-white" /></div>
+          <h1 className="text-xl font-semibold text-[#1a1c1b]">MarketOS Offline</h1>
+          <p className="text-sm text-[#1a1c1b]/50 mt-1">Create an account or sign in to your local business workspace.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
-          <button className={`rounded-md border px-3 py-2 text-sm ${mode === "signup" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`} onClick={() => setMode("signup")}>Sign up</button>
-          <button className={`rounded-md border px-3 py-2 text-sm ${mode === "signin" ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`} onClick={() => setMode("signin")}>Sign in</button>
+          <button className={`rounded-xl border px-3 py-2 text-sm ${mode === "signup" ? "bg-[#005932] text-white border-[#005932]" : "bg-white text-[#1a1c1b] border-[#1a1c1b]/20"}`} onClick={() => setMode("signup")}>Sign up</button>
+          <button className={`rounded-xl border px-3 py-2 text-sm ${mode === "signin" ? "bg-[#005932] text-white border-[#005932]" : "bg-white text-[#1a1c1b] border-[#1a1c1b]/20"}`} onClick={() => setMode("signin")}>Sign in</button>
         </div>
 
         <div className="space-y-3">
@@ -788,7 +837,7 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => P
           )}
           <Field label="Email"><input className={inputClass} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
           <Field label="Password"><input className={inputClass} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
-          {error && <div className="p-3 rounded-md bg-red-50 border border-red-100 text-sm text-red-700">{error}</div>}
+          {error && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
           <Btn disabled={loading} onClick={submit}>{mode === "signup" ? "Create Account" : "Sign In"}</Btn>
         </div>
       </div>
@@ -856,7 +905,7 @@ export default function App() {
   }, "Signed out.");
 
   if (!authReady) {
-    return <div className="h-screen grid place-items-center bg-[#F8FAFC] text-sm text-gray-600">Starting MarketOS...</div>;
+    return <div className="h-screen grid place-items-center bg-[#f9f9f6] text-sm text-[#1a1c1b]/60">Starting MarketOS...</div>;
   }
 
   if (!data) {
@@ -883,11 +932,11 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F8FAFC]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+    <div className="flex h-screen overflow-hidden bg-[#f9f9f6]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       <Sidebar active={screen} onNavigate={setScreen} />
       <div className="flex flex-col flex-1 min-w-0">
         <TopBar data={data} onSignOut={signOut} />
-        {(toast || error) && <div className={`px-5 py-2 text-sm border-b ${error ? "bg-red-50 text-red-700 border-red-100" : "bg-green-50 text-green-700 border-green-100"}`}>{error || toast}</div>}
+        {(toast || error) && <div className={`px-5 py-2 text-sm border-b ${error ? "bg-red-50 text-red-700 border-red-200" : "bg-[#005932]/5 text-[#005932] border-[#005932]/20"}`}>{error || toast}</div>}
         <div className="flex flex-1 overflow-hidden">
           <main className="flex-1 overflow-y-auto p-6 min-w-0">{render()}</main>
           <AIPanel screen={screen} data={data} onNavigate={setScreen} />
