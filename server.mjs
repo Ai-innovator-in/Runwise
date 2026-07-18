@@ -1559,8 +1559,17 @@ async function analyzeWithReasoningModel(text) {
     "Use numeric values without currency symbols.",
     "Use an empty array when a record type is absent.",
     "Return JSON only.",
-    "Examples of Nigerian Pidgin: 'I sell 5 bag of rice for 50k' means 5 bags of rice at ₦50,000 each.",
-    "Examples of African market: 'Customer take goods worth 20k on credit' means a credit sale of ₦20,000.",
+    "",
+    "CRITICAL RULES:",
+    "- Never create a debt entry unless the note explicitly mentions 'credit', 'owe', 'owes', 'debt', or 'on credit'.",
+    "- Never create an expense entry unless the note explicitly states money was spent (e.g., 'paid', 'bought', 'spent', 'transport cost').",
+    "- Never divide a total amount into unit prices. If the note says 'sold 5 bags for 50,000', use quantity=5, unitPrice=50000 (the total), not 10000.",
+    "- Preserve the exact numbers from the note. Do not round, estimate, or calculate.",
+    "- If a field value is not explicitly stated in the note, use an empty string '' for text fields and 0 for numeric fields.",
+    "- Prefer returning an empty array over guessing a record type that was not clearly mentioned.",
+    "",
+    "Examples of Nigerian Pidgin: 'I sell 5 bag of rice for 50k' means 5 bags of rice at ₦50,000 each (unitPrice=50000).",
+    "Examples of African market: 'Customer take goods worth 20k on credit' means a credit sale of ₦20,000 (debt entry).",
     `Business note:\n${text}`,
   ].join("\n\n");
 
@@ -1589,15 +1598,21 @@ async function analyzeWithReasoningModel(text) {
       String(
         Math.max(
           64,
-          Number(AI_CONFIG.reasoning.maxTokens) || 512,
+          Math.min(
+            256,
+            Number(AI_CONFIG.reasoning.maxTokens) || 512,
+          ),
         ),
       ),
 
       "-c",
       String(
         Math.max(
-          1024,
-          Number(AI_CONFIG.reasoning.context) || 2048,
+          512,
+          Math.min(
+            1024,
+            Number(AI_CONFIG.reasoning.context) || 2048,
+          ),
         ),
       ),
 
