@@ -1090,7 +1090,7 @@ export default function App() {
       case "invoices": return <InvoicesScreen data={data} refresh={(payload) => run(() => refresh(payload), "Invoice saved.")} />;
       case "reports": return <ReportsScreen data={data} />;
       case "coach": return <CoachScreen />;
-      case "knowledge": return <KnowledgeScreen data={data} />;
+      case "knowledge": return <KnowledgeScreen data={data} refresh={(payload) => run(() => refresh(payload), "Knowledge updated.")} />;
       case "performance": return <PerformanceScreen data={data} refresh={(payload) => run(() => refresh(payload), "Benchmark updated.")} />;
       case "settings": return <SettingsScreen data={data} refresh={(payload) => run(() => refresh(payload), "Settings saved.")} />;
       default: return null;
