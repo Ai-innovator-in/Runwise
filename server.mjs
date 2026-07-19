@@ -2031,63 +2031,6 @@ function addSale(data, sale) {
   }
 }
 
-function coachAnswer(
-  data,
-  question,
-) {
-  const s = summary(data);
-  const answer = [];
-
-  if (
-    !data.sales.length &&
-    !data.inventory.length &&
-    !data.customers.length
-  ) {
-    answer.push(
-      "There is not enough business data yet to make a recommendation.",
-    );
-
-    answer.push(
-      "Add sales, expenses, inventory, or customer debt records first.",
-    );
-  } else {
-    if (s.lowStockCount) {
-      answer.push(
-        `${s.lowStockCount} product${
-          s.lowStockCount === 1
-            ? ""
-            : "s"
-        } are low on stock.`,
-      );
-    }
-
-    if (s.customerDebt) {
-      answer.push(
-        `Outstanding customer debt is ₦${Number(
-          s.customerDebt,
-        ).toLocaleString()}.`,
-      );
-    }
-
-    if (s.salesTotal) {
-      answer.push(
-        `Today's sales total is ₦${Number(
-          s.salesTotal,
-        ).toLocaleString()}.`,
-      );
-    }
-  }
-
-  return {
-    question,
-    answer,
-    recommendedAction: answer.length
-      ? "Use the ledger actions to add or update real records, then ask again for a more specific recommendation."
-      : "",
-    basedOn:
-      "Your saved local records",
-  };
-}
 
 function searchKnowledge(data, query) {
   const q = String(query || "")
