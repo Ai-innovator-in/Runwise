@@ -467,4 +467,90 @@ describe("deterministicCoachAnswer", () => {
     assert.ok(!result.answer.includes("fallback"));
     assert.ok(!result.answer.includes("engine"));
   });
+
+  it("should answer business name question from settings", () => {
+    const data = makeData();
+    data.settings = { businessName: "My Test Business", location: "" };
+    const result = deterministicCoachAnswer(data, "What's my business name?");
+    assert.ok(result.answer.includes("My Test Business"));
+    assert.equal(result.evidenceUsed[0].title, "Business name");
+  });
+
+  it("should answer business name question from Knowledge Base when settings empty", () => {
+    const data = makeData();
+    data.settings = { businessName: "", location: "" };
+    createKnowledgeItem(data, "My KB Business", "This document describes our business");
+    const result = deterministicCoachAnswer(data, "What's my business name?");
+    assert.ok(result.answer.includes("My KB Business"));
+    assert.equal(result.evidenceUsed[0].type, "knowledge");
+  });
+
+  it("should indicate insufficient data when business name not found", () => {
+    const data = makeData();
+    data.settings = { businessName: "", location: "" };
+    const result = deterministicCoachAnswer(data, "What's my business name?");
+    assert.ok(result.dataLimitations.some((lim) => lim.includes("No business name")));
+  });
+
+  it("should not return unrelated low-stock advice for business name question", () => {
+    const data = makeData();
+    data.settings = { businessName: "TestCo", location: "" };
+    data.inventory = [{ id: "p1", name: "Cement", stock: 5, costPrice: 100, sellPrice: 200, damaged: 0 }];
+    const result = deterministicCoachAnswer(data, "What's my business name?");
+    assert.ok(result.answer.includes("TestCo"));
+    assert.ok(!result.answer.includes("low on stock"));
+  });
+
+  it("should answer business location question", () => {
+    const data = makeData();
+    data.settings = { businessName: "", location: "Lagos" };
+    const result = deterministicCoachAnswer(data, "Where is my business located?");
+    assert.ok(result.answer.includes("Lagos"));
+  });
+
+  it("should answer total sales question", () => {
+    const data = makeData();
+    data.sales = [{ id: "s1", date: "2026-07-19", product: "Cement", quantity: 10, unitPrice: 5000, channel: "Cash", customer: "Musa" }];
+    const result = deterministicCoachAnswer(data, "What are my total sales?");
+    assert.ok(result.answer.includes("50,000"));
+  });
+
+  it("should answer customer debt question", () => {
+    const data = makeData();
+    data.customers = [{ id: "c1", name: "Musa", debt: 50000, lastActivity: "2026-07-19", status: "Active", history: [] }];
+    const result = deterministicCoachAnswer(data, "How much customer debt do I have?");
+    assert.ok(result.answer.includes("50,000"));
+  });
+
+  it("should answer low stock question", () => {
+    const data = makeData();
+    data.inventory = [{ id: "p1", name: "Cement", stock: 5, costPrice: 100, sellPrice: 200, damaged: 0 }];
+    const result = deterministicCoachAnswer(data, "What products are low on stock?");
+    assert.ok(result.answer.includes("1 product"));
+  });
 });
+
+describe("directFactualAnswer", () => {
+  const makeData = () => ({
+    knowledge: [],
+    sales: [],
+    expenses: [],
+    customers: [],
+    inventory: [],
+    settings: { businessName: "", location: "" },
+  });
+
+  it("should return null for non-factual question", () => {
+    const data = makeData();
+    const result = directFactualAnswer(data, "How can I improve my business?");
+    assert.equal(result, null);
+  });
+
+  it("should return business name from settings", () => {
+    const data = makeData();
+    data.settings.businessName = "TestCo";
+    const result = directFactualAnswer(data, "What's my business name?");
+    assert.ok(result);
+    assert.ok(result.answer.includes("TestCo"));
+    assert.equal(result.confidence, "high");
+  });
