@@ -1230,7 +1230,6 @@ const EXTRACTION_SCHEMA = {
         required: [
           "product",
           "quantity",
-          "unitPrice",
           "channel",
           "customer",
         ],
@@ -1243,6 +1242,10 @@ const EXTRACTION_SCHEMA = {
             minimum: 0,
           },
           unitPrice: {
+            type: "number",
+            minimum: 0,
+          },
+          totalAmount: {
             type: "number",
             minimum: 0,
           },
@@ -1439,6 +1442,40 @@ function createDraft(
   };
 }
 
+function normalizeSale(rawSale) {
+  const product = titleCase(rawSale.product || "");
+  const quantity = amount(rawSale.quantity);
+  const channel = rawSale.channel === "Credit" ? "Credit" : "Cash";
+  const customer = titleCase(rawSale.customer || "");
+
+  let unitPrice = null;
+  const rawUnitPrice = amount(rawSale.unitPrice);
+  const rawTotalAmount = amount(rawSale.totalAmount);
+
+  if (rawUnitPrice > 0) {
+    // explicit unit price
+    unitPrice = rawUnitPrice;
+  } else if (rawTotalAmount > 0 && quantity > 0) {
+    // total amount provided, compute unit price
+    unitPrice = rawTotalAmount / quantity;
+  } else if (rawTotalAmount > 0 && quantity === 0) {
+    // total amount but no quantity – treat total as unit price (fallback)
+    unitPrice = rawTotalAmount;
+  }
+
+  // If neither unitPrice nor totalAmount is provided, unitPrice stays null
+  // The caller will handle null appropriately (e.g., treat as 0)
+
+  return {
+    id: id("draft_sale"),
+    product,
+    quantity,
+    unitPrice,
+    channel,
+    customer,
+  };
+}
+
 function normalizeModelDraft(
   text,
   modelOutput,
@@ -1448,29 +1485,12 @@ function normalizeModelDraft(
       ? modelOutput.sales
       : []
   )
-    .map((sale) => ({
-      id: id("draft_sale"),
-      product: titleCase(
-        sale.product,
-      ),
-      quantity: amount(
-        sale.quantity,
-      ),
-      unitPrice: amount(
-        sale.unitPrice,
-      ),
-      channel:
-        sale.channel === "Credit"
-          ? "Credit"
-          : "Cash",
-      customer: titleCase(
-        sale.customer,
-      ),
-    }))
+    .map((sale) => normalizeSale(sale))
     .filter(
       (sale) =>
         sale.product &&
         sale.quantity > 0 &&
+        sale.unitPrice !== null &&
         sale.unitPrice >= 0,
     );
 
@@ -1714,17 +1734,64 @@ function analyzeNoteWithRules(
   const expenses = [];
   const debts = [];
 
+  // Sale with "for" (total amount)
   for (const match of text.matchAll(
-    /sold\s+(\d+)\s+(.+?)\s+(?:at|for)\s+₦?([\d,]+)/gi,
+    /sold\s+(\d+)\s+(.+?)\s+for\s+₦?([\d,]+)/gi,
   )) {
-    sales.push({
-      id: id("draft_sale"),
-      product: titleCase(match[2]),
+    const rawSale = {
+      product: match[2],
       quantity: amount(match[1]),
-      unitPrice: amount(match[3]),
+      unitPrice: null,
+      totalAmount: amount(match[3]),
       channel: "Cash",
       customer: "",
-    });
+    };
+    sales.push(normalizeSale(rawSale));
+  }
+
+  // Sale with "at" (unit price)
+  for (const match of text.matchAll(
+    /sold\s+(\d+)\s+(.+?)\s+at\s+₦?([\d,]+)\s+each/gi,
+  )) {
+    const rawSale = {
+      product: match[2],
+      quantity: amount(match[1]),
+      unitPrice: amount(match[3]),
+      totalAmount: null,
+      channel: "Cash",
+      customer: "",
+    };
+    sales.push(normalizeSale(rawSale));
+  }
+
+  // Sale without quantity (e.g., "sold cement to Musa for 5,000")
+  for (const match of text.matchAll(
+    /sold\s+(.+?)\s+(?:to\s+\S+\s+)?for\s+₦?([\d,]+)/gi,
+  )) {
+    const rawSale = {
+      product: match[1],
+      quantity: 1,
+      unitPrice: null,
+      totalAmount: amount(match[2]),
+      channel: "Cash",
+      customer: "",
+    };
+    sales.push(normalizeSale(rawSale));
+  }
+
+  // Credit pattern: "Musa took 50 bags of cement on credit for 5,000"
+  for (const match of text.matchAll(
+    /\b([A-Z][a-z]+)\s+took\s+(\d+)\s+(.+?)\s+on\s+credit\s+for\s+₦?([\d,]+)/gi,
+  )) {
+    const rawSale = {
+      product: match[3],
+      quantity: amount(match[2]),
+      unitPrice: null,
+      totalAmount: amount(match[4]),
+      channel: "Credit",
+      customer: match[1],
+    };
+    sales.push(normalizeSale(rawSale));
   }
 
   for (const match of text.matchAll(
@@ -1878,9 +1945,13 @@ function addSale(data, sale) {
     sale.quantity,
   );
 
-  const unitPrice = amount(
-    sale.unitPrice,
-  );
+  // Compute unitPrice from totalAmount if needed
+  let unitPrice = amount(sale.unitPrice);
+  if (unitPrice === 0 && sale.totalAmount > 0 && quantity > 0) {
+    unitPrice = sale.totalAmount / quantity;
+  } else if (unitPrice === 0 && sale.totalAmount > 0) {
+    unitPrice = sale.totalAmount;
+  }
 
   data.sales.unshift({
     id: id("sale"),
@@ -2959,11 +3030,20 @@ const server = http.createServer(
   },
 );
 
-server.listen(PORT, () => {
-  console.log(
-    `MarketOS backend running on http://127.0.0.1:${PORT}`,
-  );
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  server.listen(PORT, () => {
+    console.log(
+      `MarketOS backend running on http://127.0.0.1:${PORT}`,
+    );
+  });
+}
+
+export {
+  normalizeSale,
+  analyzeNoteWithRules,
+  analyzeWithReasoningModel,
+  EXTRACTION_SCHEMA,
+};
 
 // Graceful shutdown
 async function shutdown() {
