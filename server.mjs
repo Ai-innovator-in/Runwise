@@ -2120,6 +2120,373 @@ function searchKnowledge(data, query) {
   };
 }
 
+// Stop words for keyword relevance scoring
+const STOP_WORDS = new Set([
+  "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
+  "of", "with", "by", "from", "as", "is", "was", "are", "were", "be",
+  "been", "being", "have", "has", "had", "do", "does", "did", "will",
+  "would", "can", "could", "should", "may", "might", "shall", "about",
+  "into", "through", "during", "before", "after", "above", "below",
+  "between", "out", "off", "over", "under", "again", "further", "then",
+  "once", "here", "there", "when", "where", "why", "how", "all", "each",
+  "every", "both", "few", "more", "most", "other", "some", "such", "no",
+  "nor", "not", "only", "own", "same", "so", "than", "too", "very",
+  "just", "because", "if", "while", "what", "which", "who", "whom",
+  "this", "that", "these", "those", "it", "its", "my", "your", "our",
+  "their", "his", "her", "its", "me", "you", "us", "them", "him", "she",
+  "he", "we", "they", "i", "am", "are", "is", "was", "were", "been",
+  "being", "have", "has", "had", "do", "does", "did", "will", "would",
+  "can", "could", "shall", "should", "may", "might", "need", "dare",
+  "ought", "used", "to", "please", "help", "tell", "ask", "answer",
+  "give", "get", "make", "take", "know", "think", "want", "need",
+  "like", "use", "find", "try", "tell", "ask", "work", "seem", "feel",
+  "try", "leave", "call", "good", "new", "first", "last", "long",
+  "great", "little", "own", "other", "old", "right", "high", "small",
+  "different", "large", "next", "early", "young", "important", "few",
+  "same", "many", "much", "some", "any", "all", "both", "each", "every",
+  "no", "most", "other", "such", "only", "own", "same", "so", "than",
+  "too", "very", "just", "because", "if", "while", "what", "which",
+  "who", "whom", "this", "that", "these", "those", "it", "its",
+]);
+
+function tokenize(text) {
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter((word) => word.length > 1 && !STOP_WORDS.has(word));
+}
+
+function retrieveRelevantKnowledge(data, question, options = {}) {
+  const maxResults = options.maxResults || 3;
+  const maxExcerptLength = options.maxExcerptLength || 500;
+  const maxTotalContext = options.maxTotalContext || 1500;
+
+  const questionTokens = tokenize(question);
+  if (!questionTokens.length) return [];
+
+  const scored = data.knowledge.map((item) => {
+    const titleTokens = tokenize(item.title);
+    const bodyTokens = tokenize(item.body);
+
+    let score = 0;
+    const matchedTokens = new Set();
+
+    for (const token of questionTokens) {
+      // Title match scores higher
+      if (titleTokens.includes(token)) {
+        score += 3;
+        matchedTokens.add(token);
+      }
+      if (bodyTokens.includes(token)) {
+        score += 1;
+        matchedTokens.add(token);
+      }
+    }
+
+    // Bonus for matching multiple tokens
+    if (matchedTokens.size > 1) {
+      score += matchedTokens.size * 0.5;
+    }
+
+    return { item, score, matchedTokens: [...matchedTokens] };
+  })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxResults);
+
+  // Generate excerpts centered around strongest matching keyword
+  const results = [];
+  let totalChars = 0;
+
+  for (const entry of scored) {
+    if (totalChars >= maxTotalContext) break;
+
+    const { item, score, matchedTokens } = entry;
+    const body = item.body || "";
+
+    // Find the best matching keyword position
+    let bestPos = 0;
+    let bestToken = matchedTokens[0] || "";
+    for (const token of matchedTokens) {
+      const pos = body.toLowerCase().indexOf(token);
+      if (pos !== -1 && (bestPos === 0 || pos < bestPos)) {
+        bestPos = pos;
+        bestToken = token;
+      }
+    }
+
+    // Create excerpt centered around bestPos
+    const halfLen = Math.floor(maxExcerptLength / 2);
+    let start = Math.max(0, bestPos - halfLen);
+    let end = Math.min(body.length, start + maxExcerptLength);
+    // Adjust start if end is at body length
+    if (end === body.length) {
+      start = Math.max(0, body.length - maxExcerptLength);
+    }
+
+    let excerpt = body.slice(start, end).trim();
+    if (start > 0) excerpt = "..." + excerpt;
+    if (end < body.length) excerpt = excerpt + "...";
+
+    const result = {
+      id: item.id,
+      title: item.title,
+      source: item.source,
+      excerpt,
+      score,
+    };
+
+    results.push(result);
+    totalChars += excerpt.length;
+  }
+
+  return results;
+}
+
+const COACH_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["answer", "observations", "recommendations", "evidenceUsed", "confidence", "dataLimitations"],
+  properties: {
+    answer: { type: "string" },
+    observations: {
+      type: "array",
+      items: { type: "string" },
+    },
+    recommendations: {
+      type: "array",
+      items: { type: "string" },
+    },
+    evidenceUsed: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["type", "recordId", "title"],
+        properties: {
+          type: { type: "string", enum: ["business-record", "knowledge"] },
+          recordId: { type: "string" },
+          title: { type: "string" },
+        },
+      },
+    },
+    confidence: { type: "string", enum: ["high", "medium", "low"] },
+    dataLimitations: {
+      type: "array",
+      items: { type: "string" },
+    },
+  },
+};
+
+function buildCoachContext(data, question) {
+  const s = summary(data);
+  const parts = [];
+
+  // Business summary
+  parts.push("=== BUSINESS SUMMARY ===");
+  parts.push(`Today's sales: ₦${Number(s.salesTotal).toLocaleString()}`);
+  parts.push(`Today's expenses: ₦${Number(s.expensesTotal).toLocaleString()}`);
+  parts.push(`Customer debt: ₦${Number(s.customerDebt).toLocaleString()}`);
+  parts.push(`Customers owing: ${s.customersOwing}`);
+  parts.push(`Low stock items: ${s.lowStockCount}`);
+  parts.push(`Inventory value: ₦${Number(s.inventoryValue).toLocaleString()}`);
+  parts.push(`Best margin product: ${s.bestMarginProduct || "none"}`);
+
+  // Recent sales (last 5)
+  const recentSales = data.sales.slice(0, 5);
+  if (recentSales.length) {
+    parts.push("=== RECENT SALES ===");
+    for (const sale of recentSales) {
+      parts.push(`${sale.product} x ${sale.quantity} @ ₦${sale.unitPrice} = ₦${(sale.quantity * sale.unitPrice).toLocaleString()} (${sale.channel})`);
+    }
+  }
+
+  // Recent expenses (last 5)
+  const recentExpenses = data.expenses.slice(0, 5);
+  if (recentExpenses.length) {
+    parts.push("=== RECENT EXPENSES ===");
+    for (const exp of recentExpenses) {
+      parts.push(`${exp.category}: ₦${exp.amount.toLocaleString()} (${exp.note})`);
+    }
+  }
+
+  // Top customers by debt
+  const topDebtors = [...data.customers]
+    .filter((c) => c.debt > 0)
+    .sort((a, b) => b.debt - a.debt)
+    .slice(0, 3);
+  if (topDebtors.length) {
+    parts.push("=== TOP DEBTORS ===");
+    for (const c of topDebtors) {
+      parts.push(`${c.name}: ₦${c.debt.toLocaleString()} (${c.status})`);
+    }
+  }
+
+  // Low stock products
+  const lowStock = data.inventory.filter((p) => p.stock <= 10);
+  if (lowStock.length) {
+    parts.push("=== LOW STOCK PRODUCTS ===");
+    for (const p of lowStock) {
+      parts.push(`${p.name}: ${p.stock} units remaining`);
+    }
+  }
+
+  // Knowledge Base excerpts
+  const knowledge = retrieveRelevantKnowledge(data, question);
+  if (knowledge.length) {
+    parts.push("=== KNOWLEDGE BASE EXCERPTS ===");
+    for (const k of knowledge) {
+      parts.push(`[${k.title}] ${k.excerpt}`);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+async function coachReasoningModel(context) {
+  const prompt = [
+    "You are a business coach for a small business using MarketOS.",
+    "",
+    "Your job is to provide specific, data‑grounded advice based on the user's question and the business data provided below.",
+    "",
+    "Rules:",
+    "- NEVER invent facts.",
+    "- Use only the supplied business records and Knowledge Base excerpts.",
+    "- Distinguish observations from recommendations.",
+    "- Give no more than 3 recommendations.",
+    "- Reference specific products, customers, trends, or document facts.",
+    "- If the data is insufficient, say so clearly.",
+    "- Do not give generic advice without evidence.",
+    "- Do not claim external market knowledge unless it exists in the uploaded documents.",
+    "",
+    context,
+    "",
+    "Respond with JSON following this schema:",
+    JSON.stringify(COACH_SCHEMA, null, 2),
+  ].join("\n\n");
+
+  const templateFile = path.join(CONFIG_DIR, "marketos-json.jinja");
+
+  if (!existsSync(templateFile)) {
+    throw new Error("The MarketOS JSON chat template was not found at config/marketos-json.jinja.");
+  }
+
+  const { stdout } = await manager.acquire(
+    'reasoning',
+    configuredPath(AI_CONFIG.reasoning.binary),
+    [
+      "-m", configuredPath(AI_CONFIG.reasoning.model),
+      "-p", prompt,
+      "-n", String(Math.max(128, Math.min(512, Number(AI_CONFIG.reasoning.maxTokens) || 512))),
+      "-c", String(Math.max(512, Math.min(1024, Number(AI_CONFIG.reasoning.context) || 2048))),
+      "-t", String(Math.max(1, Number(AI_CONFIG.reasoning.threads) || DEFAULT_THREADS)),
+      "--temp", "0",
+      "--top-k", "1",
+      "--top-p", "1",
+      "--min-p", "0",
+      "--presence-penalty", "0",
+      "--jinja",
+      "--chat-template-file", templateFile,
+      "--single-turn",
+      "--no-display-prompt",
+      "--no-show-timings",
+      "--simple-io",
+      "--no-warmup",
+      "--json-schema", JSON.stringify(COACH_SCHEMA),
+    ],
+    { timeoutSeconds: AI_CONFIG.reasoning.timeoutSeconds },
+  );
+
+  return extractFirstJson(stdout);
+}
+
+function deterministicCoachAnswer(data, question) {
+  const s = summary(data);
+  const knowledge = retrieveRelevantKnowledge(data, question);
+
+  const observations = [];
+  const recommendations = [];
+  const evidenceUsed = [];
+  const dataLimitations = [];
+
+  // Observations from business data
+  if (s.salesTotal > 0) {
+    observations.push(`Today's sales total is ₦${Number(s.salesTotal).toLocaleString()}.`);
+    evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's sales total" });
+  }
+  if (s.expensesTotal > 0) {
+    observations.push(`Today's expenses total is ₦${Number(s.expensesTotal).toLocaleString()}.`);
+    evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's expenses total" });
+  }
+  if (s.customerDebt > 0) {
+    observations.push(`Customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`);
+    evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Customer debt" });
+  }
+  if (s.lowStockCount > 0) {
+    observations.push(`${s.lowStockCount} product(s) are low on stock.`);
+    evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Low stock count" });
+  }
+
+  // Observations from knowledge
+  for (const k of knowledge) {
+    observations.push(`Knowledge document "${k.title}" mentions: ${k.excerpt.slice(0, 100)}...`);
+    evidenceUsed.push({ type: "knowledge", recordId: k.id, title: k.title });
+  }
+
+  // Recommendations based on data
+  if (s.customerDebt > 0) {
+    recommendations.push("Send payment reminders to customers with outstanding debt.");
+  }
+  if (s.lowStockCount > 0) {
+    recommendations.push("Restock low inventory items to avoid stockouts.");
+  }
+  if (s.salesTotal === 0 && s.expensesTotal === 0) {
+    recommendations.push("Start recording sales and expenses to get actionable insights.");
+  }
+
+  if (!recommendations.length) {
+    recommendations.push("Your business data looks balanced. Continue monitoring sales and expenses.");
+  }
+
+  // Data limitations
+  if (!data.sales.length && !data.expenses.length) {
+    dataLimitations.push("No sales or expense records exist yet.");
+  }
+  if (!knowledge.length) {
+    dataLimitations.push("No relevant Knowledge Base documents were found for this question.");
+  }
+  if (!dataLimitations.length) {
+    dataLimitations.push("Data is sufficient for basic analysis.");
+  }
+
+  const confidence = data.sales.length > 0 && data.expenses.length > 0 ? "medium" : "low";
+
+  return {
+    answer: observations.length ? observations.join(" ") : "I don't have enough data to answer that question.",
+    observations,
+    recommendations,
+    evidenceUsed,
+    confidence,
+    dataLimitations,
+  };
+}
+
+async function coachAnswer(data, question) {
+  const context = buildCoachContext(data, question);
+
+  if (executableReady(AI_CONFIG.reasoning)) {
+    try {
+      return await queueAiTask(() => coachReasoningModel(context));
+    } catch (error) {
+      // Fallback to deterministic
+      console.warn("Coach reasoning model failed, using deterministic fallback:", error.message);
+    }
+  }
+
+  return deterministicCoachAnswer(data, question);
+}
+
 function createKnowledgeItem(data, title, body) {
   const trimmedTitle = String(title || "").trim();
   const trimmedBody = String(body || "").trim();
@@ -3032,7 +3399,7 @@ async function handleApi(req, res) {
     return send(
       res,
       200,
-      coachAnswer(
+      await coachAnswer(
         data,
         body.question,
       ),
@@ -3259,6 +3626,11 @@ export {
   listKnowledgeItems,
   deleteKnowledgeItem,
   searchKnowledge,
+  retrieveRelevantKnowledge,
+  buildCoachContext,
+  deterministicCoachAnswer,
+  coachAnswer,
+  COACH_SCHEMA,
 };
 
 // Graceful shutdown

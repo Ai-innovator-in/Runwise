@@ -625,16 +625,116 @@ function ReportsScreen({ data }: { data: AppData }) {
 
 function CoachScreen() {
   const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState<{ answer: string[]; recommendedAction: string; basedOn: string } | null>(null);
-  const ask = async () => setAnswer(await api("/api/coach", { method: "POST", body: JSON.stringify({ question }) }));
+  const [answer, setAnswer] = useState<{
+    answer: string;
+    observations: string[];
+    recommendations: string[];
+    evidenceUsed: Array<{ type: string; recordId: string; title: string }>;
+    confidence: string;
+    dataLimitations: string[];
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const ask = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      setAnswer(await api("/api/coach", { method: "POST", body: JSON.stringify({ question }) }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Coach request failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confidenceColor = (level: string) => {
+    switch (level) {
+      case "high": return "bg-green-50 text-green-700 border-green-200";
+      case "medium": return "bg-amber-50 text-amber-800 border-amber-200";
+      case "low": return "bg-red-50 text-red-700 border-red-200";
+      default: return "bg-gray-50 text-gray-700 border-gray-200";
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-5">
-      <Header title="Business Coach" subtitle="Answers are generated from backend ledger, inventory, and debt records." />
+      <Header title="Business Coach" subtitle="Answers are generated from backend ledger, inventory, debt records, and Knowledge Base documents." />
       <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 space-y-3 shadow-sm">
-        <Field label="Ask about your business"><input className={inputClass} value={question} onChange={(e) => setQuestion(e.target.value)} /></Field>
-        <Btn onClick={ask} icon={<Zap size={14} />}>Ask AI Coach</Btn>
+        <Field label="Ask about your business">
+          <input className={inputClass} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g., What can I do to improve sales?" />
+        </Field>
+        <Btn onClick={ask} disabled={loading} icon={<Zap size={14} />}>
+          {loading ? "Thinking..." : "Ask AI Coach"}
+        </Btn>
+        {error && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
       </div>
-      {answer && <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 text-sm text-[#1a1c1b] shadow-sm"><Badge label={answer.basedOn} variant="local" /><ol className="list-decimal ml-5 mt-3 space-y-2">{answer.answer.map((item) => <li key={item}>{item}</li>)}</ol><div className="mt-4 p-3 bg-[#005932]/5 border border-[#005932]/20 rounded-xl text-[#005932]">{answer.recommendedAction}</div></div>}
+      {answer && (
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 text-sm text-[#1a1c1b] shadow-sm space-y-4">
+          {/* Confidence badge */}
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium border ${confidenceColor(answer.confidence)}`}>
+              {answer.confidence === "high" ? "High Confidence" : answer.confidence === "medium" ? "Medium Confidence" : "Low Confidence"}
+            </span>
+          </div>
+
+          {/* Answer */}
+          <div>
+            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Answer</h3>
+            <p className="text-[#1a1c1b] leading-relaxed">{answer.answer}</p>
+          </div>
+
+          {/* Observations */}
+          {answer.observations.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Observations</h3>
+              <ul className="list-disc ml-5 space-y-1">
+                {answer.observations.map((obs, i) => (
+                  <li key={i} className="text-[#1a1c1b]/80">{obs}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {answer.recommendations.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Recommendations</h3>
+              <ul className="list-decimal ml-5 space-y-1">
+                {answer.recommendations.map((rec, i) => (
+                  <li key={i} className="text-[#005932] font-medium">{rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Evidence Used */}
+          {answer.evidenceUsed.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Evidence Used</h3>
+              <div className="flex flex-wrap gap-2">
+                {answer.evidenceUsed.map((ev, i) => (
+                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#005932]/10 text-[#005932] border border-[#005932]/20">
+                    {ev.type === "knowledge" ? "📄" : "📊"} {ev.title}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Data Limitations */}
+          {answer.dataLimitations.length > 0 && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
+              <h3 className="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-1">Limitations</h3>
+              <ul className="list-disc ml-5 space-y-0.5">
+                {answer.dataLimitations.map((lim, i) => (
+                  <li key={i} className="text-xs text-amber-700">{lim}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

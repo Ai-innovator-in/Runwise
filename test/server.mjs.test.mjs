@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 // we import it dynamically and extract the needed functions.
 let normalizeSale, analyzeNoteWithRules, analyzeWithReasoningModel, EXTRACTION_SCHEMA;
 let createKnowledgeItem, uploadKnowledgeItem, listKnowledgeItems, deleteKnowledgeItem, searchKnowledge;
+let retrieveRelevantKnowledge, buildCoachContext, deterministicCoachAnswer, coachAnswer, COACH_SCHEMA;
 
 before(async () => {
   const mod = await import("../server.mjs");
@@ -18,6 +19,11 @@ before(async () => {
   listKnowledgeItems = mod.listKnowledgeItems;
   deleteKnowledgeItem = mod.deleteKnowledgeItem;
   searchKnowledge = mod.searchKnowledge;
+  retrieveRelevantKnowledge = mod.retrieveRelevantKnowledge;
+  buildCoachContext = mod.buildCoachContext;
+  deterministicCoachAnswer = mod.deterministicCoachAnswer;
+  coachAnswer = mod.coachAnswer;
+  COACH_SCHEMA = mod.COACH_SCHEMA;
 });
 
 describe("normalizeSale", () => {
@@ -340,5 +346,125 @@ describe("knowledge operations", () => {
     const result = searchKnowledge(data, "nonexistent");
     assert.ok(result.answer.includes("No matching"));
     assert.equal(result.sources.length, 0);
+  });
+});
+
+describe("retrieveRelevantKnowledge", () => {
+  const makeData = () => ({
+    knowledge: [],
+    sales: [],
+    expenses: [],
+    customers: [],
+    inventory: [],
+  });
+
+  it("should return empty array when no knowledge exists", () => {
+    const data = makeData();
+    const results = retrieveRelevantKnowledge(data, "cement");
+    assert.equal(results.length, 0);
+  });
+
+  it("should find matching documents by keyword", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Cement Pricing", "Our business sells cement at 5000 per bag");
+    const results = retrieveRelevantKnowledge(data, "cement");
+    assert.equal(results.length, 1);
+    assert.equal(results[0].title, "Cement Pricing");
+    assert.ok(results[0].score > 0);
+  });
+
+  it("should rank title matches above body matches", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Cement Guide", "How to sell cement effectively");
+    createKnowledgeItem(data, "General Tips", "Cement is a common building material");
+    const results = retrieveRelevantKnowledge(data, "cement");
+    assert.equal(results.length, 2);
+    // Title match should have higher score
+    assert.ok(results[0].score > results[1].score);
+    assert.equal(results[0].title, "Cement Guide");
+  });
+
+  it("should limit results to top 3", () => {
+    const data = makeData();
+    for (let i = 0; i < 5; i++) {
+      createKnowledgeItem(data, `Doc ${i}`, `Content about cement ${i}`);
+    }
+    const results = retrieveRelevantKnowledge(data, "cement");
+    assert.equal(results.length, 3);
+  });
+
+  it("should limit excerpt length", () => {
+    const data = makeData();
+    const longBody = "Cement " + "x".repeat(1000);
+    createKnowledgeItem(data, "Long Doc", longBody);
+    const results = retrieveRelevantKnowledge(data, "cement");
+    assert.ok(results[0].excerpt.length <= 500);
+  });
+
+  it("should return empty array when no relevant match", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Transport", "Transport costs 2000 per trip");
+    const results = retrieveRelevantKnowledge(data, "cement");
+    assert.equal(results.length, 0);
+  });
+});
+
+describe("deterministicCoachAnswer", () => {
+  const makeData = () => ({
+    knowledge: [],
+    sales: [],
+    expenses: [],
+    customers: [],
+    inventory: [],
+  });
+
+  it("should return the correct response shape", () => {
+    const data = makeData();
+    const result = deterministicCoachAnswer(data, "How is my business doing?");
+    assert.ok(typeof result.answer === "string");
+    assert.ok(Array.isArray(result.observations));
+    assert.ok(Array.isArray(result.recommendations));
+    assert.ok(Array.isArray(result.evidenceUsed));
+    assert.ok(["high", "medium", "low"].includes(result.confidence));
+    assert.ok(Array.isArray(result.dataLimitations));
+  });
+
+  it("should include knowledge evidence when relevant", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Cement Pricing", "Our business sells cement at 5000 per bag");
+    const result = deterministicCoachAnswer(data, "cement");
+    const knowledgeEvidence = result.evidenceUsed.filter((e) => e.type === "knowledge");
+    assert.ok(knowledgeEvidence.length > 0);
+    assert.equal(knowledgeEvidence[0].title, "Cement Pricing");
+  });
+
+  it("should exclude unrelated documents", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Transport", "Transport costs 2000 per trip");
+    const result = deterministicCoachAnswer(data, "cement");
+    const knowledgeEvidence = result.evidenceUsed.filter((e) => e.type === "knowledge");
+    assert.equal(knowledgeEvidence.length, 0);
+  });
+
+  it("should set confidence to low when no sales or expenses", () => {
+    const data = makeData();
+    const result = deterministicCoachAnswer(data, "How is my business?");
+    assert.equal(result.confidence, "low");
+  });
+
+  it("should set confidence to medium when sales and expenses exist", () => {
+    const data = makeData();
+    data.sales.push({ id: "s1", date: "2026-07-19", product: "Cement", quantity: 10, unitPrice: 5000, channel: "Cash", customer: "Musa" });
+    data.expenses.push({ id: "e1", date: "2026-07-19", category: "Transport", amount: 2000, note: "Delivery", status: "Paid" });
+    const result = deterministicCoachAnswer(data, "How is my business?");
+    assert.equal(result.confidence, "medium");
+  });
+
+  it("should not expose internal engine details", () => {
+    const data = makeData();
+    const result = deterministicCoachAnswer(data, "test");
+    assert.ok(!result.answer.includes("llama"));
+    assert.ok(!result.answer.includes("fallback"));
+    assert.ok(!result.answer.includes("engine"));
   });
 });
