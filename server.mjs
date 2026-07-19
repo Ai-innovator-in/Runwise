@@ -2490,6 +2490,278 @@ function deterministicCoachAnswer(data, question) {
   };
 }
 
+function directFactualAnswer(data, question) {
+  const normalized = normalizeQuestion(question).toLowerCase();
+
+  // Business name questions
+  const isBusinessNameQuestion =
+    normalized.includes("business name") ||
+    normalized.includes("company name") ||
+    normalized.includes("what is my business called") ||
+    normalized.includes("what is my company called") ||
+    normalized.includes("tell me my business name") ||
+    normalized.includes("tell me my company name") ||
+    (normalized.includes("what") && normalized.includes("name") && (normalized.includes("business") || normalized.includes("company")));
+
+  if (isBusinessNameQuestion) {
+    const name = data.settings?.businessName || "";
+    if (name) {
+      return {
+        answer: `Your business name is ${name}.`,
+        observations: [`Your business name is ${name}.`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "business-record",
+            recordId: "settings",
+            title: "Business name"
+          }
+        ],
+        confidence: "high",
+        dataLimitations: []
+      };
+    }
+
+    // Search Knowledge Base for business name
+    const knowledge = retrieveRelevantKnowledge(data, "business name");
+    if (knowledge.length) {
+      return {
+        answer: `Based on your Knowledge Base documents, your business name is "${knowledge[0].title}".`,
+        observations: [`Based on your Knowledge Base documents, your business name is "${knowledge[0].title}".`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "knowledge",
+            recordId: knowledge[0].id,
+            title: knowledge[0].title
+          }
+        ],
+        confidence: "medium",
+        dataLimitations: ["Business name was found in Knowledge Base, not in settings."]
+      };
+    }
+
+    return {
+      answer: "I don't have your business name in MarketOS yet.",
+      observations: [],
+      recommendations: [],
+      evidenceUsed: [],
+      confidence: "low",
+      dataLimitations: [
+        "No business name is saved in settings or found in the Knowledge Base."
+      ]
+    };
+  }
+
+  // Business location questions
+  const isBusinessLocationQuestion =
+    normalized.includes("business location") ||
+    normalized.includes("company location") ||
+    normalized.includes("where is my business") ||
+    normalized.includes("where is my company") ||
+    (normalized.includes("where") && normalized.includes("located") && (normalized.includes("business") || normalized.includes("company")));
+
+  if (isBusinessLocationQuestion) {
+    const location = data.settings?.location || "";
+    if (location) {
+      return {
+        answer: `Your business location is ${location}.`,
+        observations: [`Your business location is ${location}.`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "business-record",
+            recordId: "settings",
+            title: "Business location"
+          }
+        ],
+        confidence: "high",
+        dataLimitations: []
+      };
+    }
+
+    const knowledge = retrieveRelevantKnowledge(data, "business location");
+    if (knowledge.length) {
+      return {
+        answer: `Based on your Knowledge Base documents, your business location is "${knowledge[0].title}".`,
+        observations: [`Based on your Knowledge Base documents, your business location is "${knowledge[0].title}".`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "knowledge",
+            recordId: knowledge[0].id,
+            title: knowledge[0].title
+          }
+        ],
+        confidence: "medium",
+        dataLimitations: ["Business location was found in Knowledge Base, not in settings."]
+      };
+    }
+
+    return {
+      answer: "I don't have your business location in MarketOS yet.",
+      observations: [],
+      recommendations: [],
+      evidenceUsed: [],
+      confidence: "low",
+      dataLimitations: [
+        "No business location is saved in settings or found in the Knowledge Base."
+      ]
+    };
+  }
+
+  // Total sales questions
+  const isTotalSalesQuestion =
+    normalized.includes("total sales") ||
+    normalized.includes("sales total") ||
+    normalized.includes("how much sales") ||
+    normalized.includes("sales amount") ||
+    (normalized.includes("how much") && normalized.includes("sold") && normalized.includes("today"));
+
+  if (isTotalSalesQuestion) {
+    const s = summary(data);
+    if (s.salesTotal > 0) {
+      return {
+        answer: `Today's total sales are ₦${Number(s.salesTotal).toLocaleString()}.`,
+        observations: [`Today's total sales are ₦${Number(s.salesTotal).toLocaleString()}.`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "business-record",
+            recordId: "summary",
+            title: "Today's sales total"
+          }
+        ],
+        confidence: "high",
+        dataLimitations: []
+      };
+    }
+
+    return {
+      answer: "No sales records exist yet.",
+      observations: [],
+      recommendations: [],
+      evidenceUsed: [],
+      confidence: "low",
+      dataLimitations: ["No sales records exist yet."]
+    };
+  }
+
+  // Total expenses questions
+  const isTotalExpensesQuestion =
+    normalized.includes("total expenses") ||
+    normalized.includes("expenses total") ||
+    normalized.includes("how much expenses") ||
+    normalized.includes("expenses amount") ||
+    (normalized.includes("how much") && normalized.includes("spent") && normalized.includes("today"));
+
+  if (isTotalExpensesQuestion) {
+    const s = summary(data);
+    if (s.expensesTotal > 0) {
+      return {
+        answer: `Today's total expenses are ₦${Number(s.expensesTotal).toLocaleString()}.`,
+        observations: [`Today's total expenses are ₦${Number(s.expensesTotal).toLocaleString()}.`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "business-record",
+            recordId: "summary",
+            title: "Today's expenses total"
+          }
+        ],
+        confidence: "high",
+        dataLimitations: []
+      };
+    }
+
+    return {
+      answer: "No expense records exist yet.",
+      observations: [],
+      recommendations: [],
+      evidenceUsed: [],
+      confidence: "low",
+      dataLimitations: ["No expense records exist yet."]
+    };
+  }
+
+  // Customer debt questions
+  const isCustomerDebtQuestion =
+    normalized.includes("customer debt") ||
+    normalized.includes("outstanding debt") ||
+    normalized.includes("how much debt") ||
+    normalized.includes("debt amount") ||
+    (normalized.includes("how much") && normalized.includes("owe") && normalized.includes("customer"));
+
+  if (isCustomerDebtQuestion) {
+    const s = summary(data);
+    if (s.customerDebt > 0) {
+      return {
+        answer: `Outstanding customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`,
+        observations: [`Outstanding customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "business-record",
+            recordId: "summary",
+            title: "Customer debt"
+          }
+        ],
+        confidence: "high",
+        dataLimitations: []
+      };
+    }
+
+    return {
+      answer: "No customer debt records exist yet.",
+      observations: [],
+      recommendations: [],
+      evidenceUsed: [],
+      confidence: "low",
+      dataLimitations: ["No customer debt records exist yet."]
+    };
+  }
+
+  // Low stock questions
+  const isLowStockQuestion =
+    normalized.includes("low stock") ||
+    normalized.includes("low inventory") ||
+    normalized.includes("stock out") ||
+    normalized.includes("restock") ||
+    (normalized.includes("what") && normalized.includes("low") && normalized.includes("stock"));
+
+  if (isLowStockQuestion) {
+    const s = summary(data);
+    if (s.lowStockCount > 0) {
+      return {
+        answer: `${s.lowStockCount} product(s) are low on stock.`,
+        observations: [`${s.lowStockCount} product(s) are low on stock.`],
+        recommendations: [],
+        evidenceUsed: [
+          {
+            type: "business-record",
+            recordId: "summary",
+            title: "Low stock count"
+          }
+        ],
+        confidence: "high",
+        dataLimitations: []
+      };
+    }
+
+    return {
+      answer: "No products are low on stock.",
+      observations: [],
+      recommendations: [],
+      evidenceUsed: [],
+      confidence: "low",
+      dataLimitations: ["No products are low on stock."]
+    };
+  }
+
+  // Not a direct factual question
+  return null;
+}
+
 async function coachAnswer(data, question) {
   // Try direct factual answer first
   const direct = directFactualAnswer(data, question);
