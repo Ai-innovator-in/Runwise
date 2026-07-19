@@ -164,6 +164,28 @@ const titleCase = (value) =>
     .replace(/\s+/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
+// Remove leading quantity words like "bags of", "pieces of", "units of", etc.
+const cleanProductName = (raw) => {
+  const text = String(raw || "").trim();
+  // Remove common quantity‑unit prefixes
+  const cleaned = text.replace(
+    /^(?:\d+\s+)?(?:bags?\s+of|pieces?\s+of|units?\s+of|litres?\s+of|kg\s+of|kgs?\s+of|packs?\s+of|crates?\s+of|cartons?\s+of|rolls?\s+of|bottles?\s+of|tins?\s+of|sacks?\s+of)\s+/i,
+    "",
+  );
+  return cleaned || text;
+};
+
+// Remove leading quantity words like "bags of", "pieces of", "units of", etc.
+const cleanProductName = (raw) => {
+  const text = String(raw || "").trim();
+  // Remove common quantity‑unit prefixes
+  const cleaned = text.replace(
+    /^(?:\d+\s+)?(?:bags?\s+of|pieces?\s+of|units?\s+of|litres?\s+of|kg\s+of|kgs?\s+of|packs?\s+of|crates?\s+of|cartons?\s+of|rolls?\s+of|bottles?\s+of|tins?\s+of|sacks?\s+of)\s+/i,
+    "",
+  );
+  return cleaned || text;
+};
+
 function emptyBusiness({ businessName, location }) {
   return {
     settings: {
@@ -1443,34 +1465,43 @@ function createDraft(
 }
 
 function normalizeSale(rawSale) {
-  const product = titleCase(rawSale.product || "");
-  const quantity = amount(rawSale.quantity);
+  const product = titleCase(cleanProductName(rawSale.product || ""));
+  let quantity = amount(rawSale.quantity);
   const channel = rawSale.channel === "Credit" ? "Credit" : "Cash";
   const customer = titleCase(rawSale.customer || "");
 
   let unitPrice = null;
+  let totalAmount = null;
   const rawUnitPrice = amount(rawSale.unitPrice);
   const rawTotalAmount = amount(rawSale.totalAmount);
+
+  // Default quantity to 1 when totalAmount exists and quantity is 0
+  if (quantity === 0 && rawTotalAmount > 0) {
+    quantity = 1;
+  }
 
   if (rawUnitPrice > 0) {
     // explicit unit price
     unitPrice = rawUnitPrice;
+    totalAmount = quantity * unitPrice;
   } else if (rawTotalAmount > 0 && quantity > 0) {
     // total amount provided, compute unit price
     unitPrice = rawTotalAmount / quantity;
+    totalAmount = rawTotalAmount;
   } else if (rawTotalAmount > 0 && quantity === 0) {
     // total amount but no quantity – treat total as unit price (fallback)
     unitPrice = rawTotalAmount;
+    totalAmount = rawTotalAmount;
   }
 
   // If neither unitPrice nor totalAmount is provided, unitPrice stays null
-  // The caller will handle null appropriately (e.g., treat as 0)
 
   return {
     id: id("draft_sale"),
     product,
     quantity,
     unitPrice,
+    totalAmount,
     channel,
     customer,
   };
@@ -1582,7 +1613,10 @@ async function analyzeWithReasoningModel(text) {
     "- Create a sale only when the user explicitly mentions selling, sold, bought by customer, or a transaction.",
     "- Preserve quantities and prices exactly as stated.",
     "- If the user says '50 bags of cement for 5000', treat 5000 as the total amount.",
+    "- If the user says '50 bags of cement for a total of 5000', treat 5000 as the total amount.",
+    "- If the user says '50 bags of cement at 5000 each', treat 5000 as the unit price.",
     "- Do NOT calculate unit price unless the user explicitly provides it.",
+    "- When extracting the product name, remove leading quantity words like 'bags of', 'pieces of', 'units of', etc. For example, 'bags of cement' should become 'cement'.",
     "",
     "EXPENSES:",
     "- Create an expense ONLY when the user explicitly says money was spent.",
@@ -1737,6 +1771,21 @@ function analyzeNoteWithRules(
   // Sale with "for" (total amount)
   for (const match of text.matchAll(
     /sold\s+(\d+)\s+(.+?)\s+for\s+₦?([\d,]+)/gi,
+  )) {
+    const rawSale = {
+      product: match[2],
+      quantity: amount(match[1]),
+      unitPrice: null,
+      totalAmount: amount(match[3]),
+      channel: "Cash",
+      customer: "",
+    };
+    sales.push(normalizeSale(rawSale));
+  }
+
+  // Sale with "for a total of" (total amount)
+  for (const match of text.matchAll(
+    /sold\s+(\d+)\s+(.+?)\s+for\s+a\s+total\s+of\s+₦?([\d,]+)/gi,
   )) {
     const rawSale = {
       product: match[2],
