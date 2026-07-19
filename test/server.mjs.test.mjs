@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 // Since server.mjs uses top-level await and side effects,
 // we import it dynamically and extract the needed functions.
 let normalizeSale, analyzeNoteWithRules, analyzeWithReasoningModel, EXTRACTION_SCHEMA;
+let createKnowledgeItem, uploadKnowledgeItem, listKnowledgeItems, deleteKnowledgeItem, searchKnowledge;
 
 before(async () => {
   const mod = await import("../server.mjs");
@@ -12,6 +13,11 @@ before(async () => {
   analyzeNoteWithRules = mod.analyzeNoteWithRules;
   analyzeWithReasoningModel = mod.analyzeWithReasoningModel;
   EXTRACTION_SCHEMA = mod.EXTRACTION_SCHEMA;
+  createKnowledgeItem = mod.createKnowledgeItem;
+  uploadKnowledgeItem = mod.uploadKnowledgeItem;
+  listKnowledgeItems = mod.listKnowledgeItems;
+  deleteKnowledgeItem = mod.deleteKnowledgeItem;
+  searchKnowledge = mod.searchKnowledge;
 });
 
 describe("normalizeSale", () => {
@@ -144,5 +150,195 @@ describe("analyzeNoteWithRules", () => {
     assert.equal(expense.category, "Transport");
     assert.equal(expense.amount, 5000);
     assert.equal(expense.status, "Paid");
+  });
+});
+
+describe("knowledge operations", () => {
+  // Create a minimal data object for testing
+  const makeData = () => ({
+    knowledge: [],
+  });
+
+  it("should create a knowledge item from text", () => {
+    const data = makeData();
+    const item = createKnowledgeItem(data, "Test Title", "Test body content");
+    assert.equal(item.title, "Test Title");
+    assert.equal(item.body, "Test body content");
+    assert.equal(item.source, "manual");
+    assert.ok(item.id.startsWith("knowledge_"));
+    assert.equal(data.knowledge.length, 1);
+  });
+
+  it("should reject duplicate title", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Duplicate Title", "First body");
+    assert.throws(
+      () => createKnowledgeItem(data, "duplicate title", "Second body"),
+      { status: 409 },
+    );
+  });
+
+  it("should reject empty title", () => {
+    const data = makeData();
+    assert.throws(
+      () => createKnowledgeItem(data, "", "body"),
+      { status: 400 },
+    );
+  });
+
+  it("should reject empty body", () => {
+    const data = makeData();
+    assert.throws(
+      () => createKnowledgeItem(data, "Title", ""),
+      { status: 400 },
+    );
+  });
+
+  it("should reject title longer than 200 characters", () => {
+    const data = makeData();
+    assert.throws(
+      () => createKnowledgeItem(data, "x".repeat(201), "body"),
+      { status: 400 },
+    );
+  });
+
+  it("should reject body larger than 100KB", () => {
+    const data = makeData();
+    assert.throws(
+      () => createKnowledgeItem(data, "Title", "x".repeat(102401)),
+      { status: 400 },
+    );
+  });
+
+  it("should upload a valid .txt file", () => {
+    const data = makeData();
+    const content = Buffer.from("Hello, world!").toString("base64");
+    const item = uploadKnowledgeItem(data, "test.txt", content);
+    assert.equal(item.title, "test");
+    assert.equal(item.body, "Hello, world!");
+    assert.equal(item.source, "upload");
+    assert.equal(data.knowledge.length, 1);
+  });
+
+  it("should upload a valid .md file", () => {
+    const data = makeData();
+    const content = Buffer.from("# Markdown content").toString("base64");
+    const item = uploadKnowledgeItem(data, "readme.md", content);
+    assert.equal(item.title, "readme");
+    assert.equal(item.body, "# Markdown content");
+    assert.equal(data.knowledge.length, 1);
+  });
+
+  it("should reject malformed base64", () => {
+    const data = makeData();
+    assert.throws(
+      () => uploadKnowledgeItem(data, "test.txt", "!!!invalid base64!!!"),
+      { status: 400 },
+    );
+  });
+
+  it("should reject unsupported extension", () => {
+    const data = makeData();
+    assert.throws(
+      () => uploadKnowledgeItem(data, "test.pdf", Buffer.from("content").toString("base64")),
+      { status: 400 },
+    );
+  });
+
+  it("should reject decoded file larger than 1 MB", () => {
+    const data = makeData();
+    // Create a base64 string that decodes to > 1 MB
+    const largeContent = "x".repeat(1400000); // ~1.05 MB when decoded
+    const base64 = Buffer.from(largeContent).toString("base64");
+    assert.throws(
+      () => uploadKnowledgeItem(data, "large.txt", base64),
+      { status: 400 },
+    );
+  });
+
+  it("should reject empty decoded content", () => {
+    const data = makeData();
+    const content = Buffer.from("").toString("base64");
+    assert.throws(
+      () => uploadKnowledgeItem(data, "empty.txt", content),
+      { status: 400 },
+    );
+  });
+
+  it("should reject duplicate filename", () => {
+    const data = makeData();
+    const content = Buffer.from("First file").toString("base64");
+    uploadKnowledgeItem(data, "test.txt", content);
+    assert.throws(
+      () => uploadKnowledgeItem(data, "test.txt", content),
+      { status: 409 },
+    );
+  });
+
+  it("should handle UTF-8 text", () => {
+    const data = makeData();
+    const utf8Content = "Hello, 世界!";
+    const content = Buffer.from(utf8Content, "utf8").toString("base64");
+    const item = uploadKnowledgeItem(data, "utf8.txt", content);
+    assert.equal(item.body, utf8Content);
+  });
+
+  it("should remove UTF-8 BOM", () => {
+    const data = makeData();
+    const bomContent = "\uFEFFHello with BOM";
+    const content = Buffer.from(bomContent, "utf8").toString("base64");
+    const item = uploadKnowledgeItem(data, "bom.txt", content);
+    assert.equal(item.body, "Hello with BOM");
+  });
+
+  it("should normalize CRLF to LF", () => {
+    const data = makeData();
+    const crlfContent = "Line1\r\nLine2\r\nLine3";
+    const content = Buffer.from(crlfContent, "utf8").toString("base64");
+    const item = uploadKnowledgeItem(data, "crlf.txt", content);
+    assert.equal(item.body, "Line1\nLine2\nLine3");
+  });
+
+  it("should list knowledge items", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Item 1", "Body 1");
+    createKnowledgeItem(data, "Item 2", "Body 2");
+    const items = listKnowledgeItems(data);
+    assert.equal(items.length, 2);
+    assert.equal(items[0].title, "Item 2"); // most recent first
+    assert.equal(items[1].title, "Item 1");
+  });
+
+  it("should delete a knowledge item", () => {
+    const data = makeData();
+    const item = createKnowledgeItem(data, "To Delete", "Body");
+    assert.equal(data.knowledge.length, 1);
+    deleteKnowledgeItem(data, item.id);
+    assert.equal(data.knowledge.length, 0);
+  });
+
+  it("should throw 404 when deleting non-existent item", () => {
+    const data = makeData();
+    assert.throws(
+      () => deleteKnowledgeItem(data, "nonexistent"),
+      { status: 404 },
+    );
+  });
+
+  it("should search knowledge items", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Cement Pricing", "Cement costs 5000 per bag");
+    createKnowledgeItem(data, "Transport Costs", "Transport costs 2000 per trip");
+    const result = searchKnowledge(data, "cement");
+    assert.ok(result.answer.includes("Cement costs"));
+    assert.equal(result.sources.length, 1);
+  });
+
+  it("should return empty result for no match", () => {
+    const data = makeData();
+    createKnowledgeItem(data, "Test", "Some content");
+    const result = searchKnowledge(data, "nonexistent");
+    assert.ok(result.answer.includes("No matching"));
+    assert.equal(result.sources.length, 0);
   });
 });

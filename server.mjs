@@ -2131,6 +2131,144 @@ function searchKnowledge(data, query) {
   };
 }
 
+function createKnowledgeItem(data, title, body) {
+  const trimmedTitle = String(title || "").trim();
+  const trimmedBody = String(body || "").trim();
+
+  if (!trimmedTitle) {
+    throw Object.assign(new Error("Title is required."), { status: 400 });
+  }
+  if (trimmedTitle.length > 200) {
+    throw Object.assign(new Error("Title must be 200 characters or fewer."), { status: 400 });
+  }
+  if (!trimmedBody) {
+    throw Object.assign(new Error("Body is required."), { status: 400 });
+  }
+  if (trimmedBody.length > 102400) {
+    throw Object.assign(new Error("Body must be 100KB or fewer."), { status: 400 });
+  }
+
+  const duplicate = data.knowledge.find(
+    (item) => item.title.toLowerCase() === trimmedTitle.toLowerCase()
+  );
+  if (duplicate) {
+    throw Object.assign(new Error("A document with this title already exists."), { status: 409 });
+  }
+
+  const item = {
+    id: id("knowledge"),
+    title: trimmedTitle,
+    source: "manual",
+    body: trimmedBody,
+    createdAt: new Date().toISOString(),
+  };
+  data.knowledge.unshift(item);
+  return item;
+}
+
+function uploadKnowledgeItem(data, filename, content) {
+  const trimmedFilename = String(filename || "").trim();
+  const trimmedContent = String(content || "").trim();
+
+  if (!trimmedFilename) {
+    throw Object.assign(new Error("No file uploaded."), { status: 400 });
+  }
+  if (!trimmedContent) {
+    throw Object.assign(new Error("No file uploaded."), { status: 400 });
+  }
+
+  const ext = path.extname(trimmedFilename).toLowerCase();
+  if (ext !== ".txt" && ext !== ".md") {
+    throw Object.assign(new Error("Unsupported file type. Only .txt and .md are allowed."), { status: 400 });
+  }
+
+  // Normalize whitespace for base64 validation
+  const normalizedContent = trimmedContent.replace(/\s/g, "");
+  // Strict base64 validation
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalizedContent)) {
+    throw Object.assign(new Error("Uploaded content is not valid base64."), { status: 400 });
+  }
+
+  // Estimate decoded size: base64 length * 3/4
+  const estimatedDecodedSize = Math.floor(normalizedContent.length * 3 / 4);
+  if (estimatedDecodedSize > 1048576) {
+    throw Object.assign(new Error("File must be 1MB or fewer."), { status: 400 });
+  }
+
+  let decoded;
+  try {
+    decoded = Buffer.from(normalizedContent, "base64");
+  } catch {
+    throw Object.assign(new Error("Uploaded content is not valid base64."), { status: 400 });
+  }
+
+  if (decoded.length > 1048576) {
+    throw Object.assign(new Error("File must be 1MB or fewer."), { status: 400 });
+  }
+
+  // Verify valid UTF-8
+  let text;
+  try {
+    text = decoded.toString("utf8");
+    // Check for replacement characters indicating invalid UTF-8
+    if (text.includes("\uFFFD")) {
+      throw new Error("Invalid UTF-8");
+    }
+  } catch {
+    throw Object.assign(new Error("Uploaded content is not valid UTF-8 text."), { status: 400 });
+  }
+
+  // Remove UTF-8 BOM if present
+  if (text.charCodeAt(0) === 0xFEFF) {
+    text = text.slice(1);
+  }
+
+  // Normalize CRLF to LF
+  text = text.replace(/\r\n/g, "\n");
+
+  const trimmedText = text.trim();
+  if (!trimmedText) {
+    throw Object.assign(new Error("Uploaded file is empty."), { status: 400 });
+  }
+
+  const title = path.basename(trimmedFilename, ext);
+  const duplicate = data.knowledge.find(
+    (item) => item.title.toLowerCase() === title.toLowerCase()
+  );
+  if (duplicate) {
+    throw Object.assign(new Error("A document with this filename already exists."), { status: 409 });
+  }
+
+  const item = {
+    id: id("knowledge"),
+    title,
+    source: "upload",
+    body: trimmedText,
+    createdAt: new Date().toISOString(),
+  };
+  data.knowledge.unshift(item);
+  return item;
+}
+
+function listKnowledgeItems(data) {
+  return data.knowledge.map((item) => ({
+    id: item.id,
+    title: item.title,
+    source: item.source,
+    body: item.body.length > 200 ? item.body.slice(0, 200) + "..." : item.body,
+    createdAt: item.createdAt,
+  }));
+}
+
+function deleteKnowledgeItem(data, id) {
+  const index = data.knowledge.findIndex((item) => item.id === id);
+  if (index === -1) {
+    throw Object.assign(new Error("Knowledge item not found."), { status: 404 });
+  }
+  data.knowledge.splice(index, 1);
+  return true;
+}
+
 function makeInvoicePdf(
   data,
   invoiceId,
@@ -2929,6 +3067,41 @@ async function handleApi(req, res) {
 
   if (
     req.method === "POST" &&
+    url.pathname === "/api/knowledge"
+  ) {
+    const item = createKnowledgeItem(data, body.title, body.body);
+    await saveDb(db);
+    return send(res, 201, item);
+  }
+
+  if (
+    req.method === "POST" &&
+    url.pathname === "/api/knowledge/upload"
+  ) {
+    const item = uploadKnowledgeItem(data, body.filename, body.content);
+    await saveDb(db);
+    return send(res, 201, item);
+  }
+
+  if (
+    req.method === "GET" &&
+    url.pathname === "/api/knowledge"
+  ) {
+    return send(res, 200, { items: listKnowledgeItems(data) });
+  }
+
+  if (
+    req.method === "DELETE" &&
+    url.pathname.startsWith("/api/knowledge/")
+  ) {
+    const id = url.pathname.split("/")[3];
+    deleteKnowledgeItem(data, id);
+    await saveDb(db);
+    return send(res, 200, { ok: true });
+  }
+
+  if (
+    req.method === "POST" &&
     url.pathname ===
       "/api/settings"
   ) {
@@ -3092,6 +3265,11 @@ export {
   analyzeNoteWithRules,
   analyzeWithReasoningModel,
   EXTRACTION_SCHEMA,
+  createKnowledgeItem,
+  uploadKnowledgeItem,
+  listKnowledgeItems,
+  deleteKnowledgeItem,
+  searchKnowledge,
 };
 
 // Graceful shutdown

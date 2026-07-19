@@ -639,18 +639,184 @@ function CoachScreen() {
   );
 }
 
-function KnowledgeScreen({ data }: { data: AppData }) {
+function KnowledgeScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<{ answer: string; sources: string[]; offline: boolean } | null>(null);
-  const search = async () => setResult(await api("/api/knowledge/search", { method: "POST", body: JSON.stringify({ query }) }));
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [uploadError, setUploadError] = useState("");
+  const [createStatus, setCreateStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [createError, setCreateError] = useState("");
+  const [deleteStatus, setDeleteStatus] = useState<"idle" | "loading" | "error" | "success">("idle");
+  const [deleteError, setDeleteError] = useState("");
+
+  const search = async () => {
+    try {
+      setResult(await api("/api/knowledge/search", { method: "POST", body: JSON.stringify({ query }) }));
+    } catch (err) {
+      setResult({ answer: "Search failed.", sources: [], offline: true });
+    }
+  };
+
+  const createDocument = async () => {
+    try {
+      setCreateStatus("loading");
+      setCreateError("");
+      await api("/api/knowledge", { method: "POST", body: JSON.stringify({ title, body }) });
+      setCreateStatus("success");
+      setTitle("");
+      setBody("");
+      await refresh();
+      setTimeout(() => setCreateStatus("idle"), 2000);
+    } catch (err) {
+      setCreateStatus("error");
+      setCreateError(err instanceof Error ? err.message : "Failed to create document.");
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext !== "txt" && ext !== "md") {
+      setUploadStatus("error");
+      setUploadError("Unsupported file type. Only .txt and .md are allowed.");
+      return;
+    }
+
+    if (file.size > 1048576) {
+      setUploadStatus("error");
+      setUploadError("File must be 1MB or fewer.");
+      return;
+    }
+
+    try {
+      setUploadStatus("loading");
+      setUploadError("");
+
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
+
+      await api("/api/knowledge/upload", {
+        method: "POST",
+        body: JSON.stringify({ filename: file.name, content: base64 }),
+      });
+
+      setUploadStatus("success");
+      await refresh();
+      setTimeout(() => setUploadStatus("idle"), 2000);
+    } catch (err) {
+      setUploadStatus("error");
+      setUploadError(err instanceof Error ? err.message : "Upload failed.");
+    }
+  };
+
+  const deleteDocument = async (id: string) => {
+    try {
+      setDeleteStatus("loading");
+      setDeleteError("");
+      await api(`/api/knowledge/${id}`, { method: "DELETE" });
+      setDeleteStatus("success");
+      await refresh();
+      setTimeout(() => setDeleteStatus("idle"), 2000);
+    } catch (err) {
+      setDeleteStatus("error");
+      setDeleteError(err instanceof Error ? err.message : "Delete failed.");
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <Header title="Knowledge Base" subtitle="Search runs against local backend knowledge records." />
+      <Header title="Knowledge Base" subtitle="Add local business documents and make them searchable." />
       <div className="grid grid-cols-3 gap-5">
-        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm"><h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Local Guides</h2>{data.knowledge.map((item) => <p key={item.id} className="text-sm text-[#1a1c1b] py-2 border-b border-[#1a1c1b]/5">{item.title}</p>)}</div>
+        <div className="col-span-1 space-y-4">
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Add Document</h2>
+            <div className="space-y-3">
+              <Field label="Title">
+                <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Document title" />
+              </Field>
+              <Field label="Body">
+                <textarea className={`${inputClass} h-28 resize-none`} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Paste document text here..." />
+              </Field>
+              <Btn onClick={createDocument} disabled={createStatus === "loading"} icon={<FileText size={14} />}>
+                {createStatus === "loading" ? "Saving..." : "Save Document"}
+              </Btn>
+              {createStatus === "error" && <div className="p-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{createError}</div>}
+              {createStatus === "success" && <div className="p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">Document saved.</div>}
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Upload File</h2>
+            <div className="space-y-3">
+              <input
+                type="file"
+                accept=".txt,.md"
+                onChange={handleFileUpload}
+                className="block w-full text-sm text-[#1a1c1b]/60 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-[#005932]/10 file:text-[#005932] hover:file:bg-[#005932]/20"
+              />
+              {uploadStatus === "loading" && <div className="text-xs text-[#1a1c1b]/60">Uploading...</div>}
+              {uploadStatus === "error" && <div className="p-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{uploadError}</div>}
+              {uploadStatus === "success" && <div className="p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">File uploaded.</div>}
+            </div>
+          </div>
+        </div>
         <div className="col-span-2 space-y-4">
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 flex gap-2 shadow-sm"><input className={inputClass} value={query} onChange={(e) => setQuery(e.target.value)} /><Btn onClick={search} icon={<Search size={14} />}>Search</Btn></div>
-          {result && <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm"><Badge label="Offline Knowledge" variant="local" /><p className="text-sm text-[#1a1c1b] leading-relaxed mt-3">{result.answer}</p><div className="flex gap-2 mt-4">{result.sources.map((source) => <Badge key={source} label={source} variant="saved" />)}</div></div>}
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 flex gap-2 shadow-sm">
+            <input className={inputClass} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search documents..." />
+            <Btn onClick={search} icon={<Search size={14} />}>Search</Btn>
+          </div>
+          {result && (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <Badge label="Offline Knowledge" variant="local" />
+              <p className="text-sm text-[#1a1c1b] leading-relaxed mt-3">{result.answer}</p>
+              <div className="flex gap-2 mt-4">
+                {result.sources.map((source) => (
+                  <Badge key={source} label={source} variant="saved" />
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Stored Documents</h2>
+            {data.knowledge.length === 0 ? (
+              <p className="text-sm text-[#1a1c1b]/40">No documents yet. Add a document or upload a file above.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-[#f9f9f6] border-b border-[#1a1c1b]/5">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Title</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Source</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Created</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1a1c1b]/5">
+                  {data.knowledge.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-4 py-2.5 text-[#1a1c1b]">{item.title}</td>
+                      <td className="px-4 py-2.5 text-[#1a1c1b]/60">{item.source}</td>
+                      <td className="px-4 py-2.5 text-[#1a1c1b]/40 text-xs">{item.createdAt}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Btn variant="danger" onClick={() => deleteDocument(item.id)} disabled={deleteStatus === "loading"} icon={<Trash2 size={14} />}>
+                          Delete
+                        </Btn>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {deleteStatus === "error" && <div className="mt-2 p-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{deleteError}</div>}
+            {deleteStatus === "success" && <div className="mt-2 p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">Document deleted.</div>}
+          </div>
         </div>
       </div>
     </div>
