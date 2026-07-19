@@ -95,6 +95,19 @@ describe("analyzeNoteWithRules", () => {
     assert.equal(sale.customer, "Musa");
   });
 
+  it('should parse "I sold 50 bags of cement to Musa for a total of 5,000."', () => {
+    const draft = analyzeNoteWithRules(
+      "I sold 50 bags of cement to Musa for a total of 5,000."
+    );
+    assert.equal(draft.sales.length, 1);
+    const sale = draft.sales[0];
+    assert.equal(sale.product, "Cement");
+    assert.equal(sale.quantity, 50);
+    assert.equal(sale.unitPrice, 100); // 5000 / 50
+    assert.equal(sale.channel, "Cash");
+    assert.equal(sale.customer, "Musa");
+  });
+
   it('should parse "I sold cement to Musa for 5,000."', () => {
     const draft = analyzeNoteWithRules(
       "I sold cement to Musa for 5,000."
