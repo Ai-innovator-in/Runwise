@@ -175,17 +175,6 @@ const cleanProductName = (raw) => {
   return cleaned || text;
 };
 
-// Remove leading quantity words like "bags of", "pieces of", "units of", etc.
-const cleanProductName = (raw) => {
-  const text = String(raw || "").trim();
-  // Remove common quantity‑unit prefixes
-  const cleaned = text.replace(
-    /^(?:\d+\s+)?(?:bags?\s+of|pieces?\s+of|units?\s+of|litres?\s+of|kg\s+of|kgs?\s+of|packs?\s+of|crates?\s+of|cartons?\s+of|rolls?\s+of|bottles?\s+of|tins?\s+of|sacks?\s+of)\s+/i,
-    "",
-  );
-  return cleaned || text;
-};
-
 function emptyBusiness({ businessName, location }) {
   return {
     settings: {
