@@ -2490,6 +2490,20 @@ function deterministicCoachAnswer(data, question) {
   };
 }
 
+function normalizeQuestion(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[’']/g, "'")
+    .replace(/\bwhat's\b/g, "what is")
+    .replace(/\bwhere's\b/g, "where is")
+    .replace(/\bwho's\b/g, "who is")
+    .replace(/\bcompany's\b/g, "company")
+    .replace(/\bbusiness's\b/g, "business")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function directFactualAnswer(data, question) {
   const normalized = normalizeQuestion(question).toLowerCase();
 
