@@ -626,12 +626,11 @@ function ReportsScreen({ data }: { data: AppData }) {
 function CoachScreen() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState<{
-    answer: string;
-    observations: string[];
-    recommendations: string[];
-    evidenceUsed: Array<{ type: string; recordId: string; title: string }>;
+    diagnosis: string;
+    recommendations: Array<{ action: string; reason: string; priority: string }>;
+    nextSteps: Array<{ step: number; description: string; timeline: string }>;
     confidence: string;
-    dataLimitations: string[];
+    limitations: string[];
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -657,12 +656,21 @@ function CoachScreen() {
     }
   };
 
+  const priorityColor = (level: string) => {
+    switch (level) {
+      case "high": return "text-red-600 bg-red-50 border-red-200";
+      case "medium": return "text-amber-700 bg-amber-50 border-amber-200";
+      case "low": return "text-green-700 bg-green-50 border-green-200";
+      default: return "text-gray-600 bg-gray-50 border-gray-200";
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-5">
       <Header title="Business Coach" subtitle="Answers are generated from backend ledger, inventory, debt records, and Knowledge Base documents." />
       <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 space-y-3 shadow-sm">
         <Field label="Ask about your business">
-          <input className={inputClass} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g., What can I do to improve sales?" />
+          <input className={inputClass} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g., How can I improve my business?" />
         </Field>
         <Btn onClick={ask} disabled={loading} icon={<Zap size={14} />}>
           {loading ? "Thinking..." : "Ask AI Coach"}
@@ -678,56 +686,53 @@ function CoachScreen() {
             </span>
           </div>
 
-          {/* Answer */}
+          {/* Diagnosis */}
           <div>
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Answer</h3>
-            <p className="text-[#1a1c1b] leading-relaxed">{answer.answer}</p>
+            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Diagnosis</h3>
+            <p className="text-[#1a1c1b] leading-relaxed">{answer.diagnosis}</p>
           </div>
-
-          {/* Observations */}
-          {answer.observations.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Observations</h3>
-              <ul className="list-disc ml-5 space-y-1">
-                {answer.observations.map((obs, i) => (
-                  <li key={i} className="text-[#1a1c1b]/80">{obs}</li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           {/* Recommendations */}
           {answer.recommendations.length > 0 && (
             <div>
               <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Recommendations</h3>
-              <ul className="list-decimal ml-5 space-y-1">
+              <div className="space-y-3">
                 {answer.recommendations.map((rec, i) => (
-                  <li key={i} className="text-[#005932] font-medium">{rec}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Evidence Used */}
-          {answer.evidenceUsed.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Evidence Used</h3>
-              <div className="flex flex-wrap gap-2">
-                {answer.evidenceUsed.map((ev, i) => (
-                  <span key={i} className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#005932]/10 text-[#005932] border border-[#005932]/20">
-                    {ev.type === "knowledge" ? "📄" : "📊"} {ev.title}
-                  </span>
+                  <div key={i} className="p-3 rounded-xl border border-[#1a1c1b]/10 bg-[#f9f9f6]">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-[#1a1c1b]">{rec.action}</p>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${priorityColor(rec.priority)}`}>
+                        {rec.priority === "high" ? "High Priority" : rec.priority === "medium" ? "Medium Priority" : "Low Priority"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#1a1c1b]/60 mt-1">{rec.reason}</p>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Data Limitations */}
-          {answer.dataLimitations.length > 0 && (
+          {/* Next Steps */}
+          {answer.nextSteps.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Next Steps</h3>
+              <ol className="list-decimal ml-5 space-y-2">
+                {answer.nextSteps.map((step) => (
+                  <li key={step.step} className="text-[#1a1c1b]/80">
+                    <p className="font-medium text-[#1a1c1b]">{step.description}</p>
+                    <p className="text-xs text-[#1a1c1b]/40 mt-0.5">Timeline: {step.timeline}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Limitations */}
+          {answer.limitations.length > 0 && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
               <h3 className="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-1">Limitations</h3>
               <ul className="list-disc ml-5 space-y-0.5">
-                {answer.dataLimitations.map((lim, i) => (
+                {answer.limitations.map((lim, i) => (
                   <li key={i} className="text-xs text-amber-700">{lim}</li>
                 ))}
               </ul>

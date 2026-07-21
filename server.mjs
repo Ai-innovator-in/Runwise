@@ -2190,124 +2190,173 @@ function retrieveRelevantKnowledge(data, question, options = {}) {
 const COACH_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["answer", "observations", "recommendations", "evidenceUsed", "confidence", "dataLimitations"],
+  required: ["diagnosis", "recommendations", "nextSteps", "confidence", "limitations"],
   properties: {
-    answer: { type: "string" },
-    observations: {
-      type: "array",
-      items: { type: "string" },
-    },
+    diagnosis: { type: "string" },
     recommendations: {
-      type: "array",
-      items: { type: "string" },
-    },
-    evidenceUsed: {
       type: "array",
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["type", "recordId", "title"],
+        required: ["action", "reason", "priority"],
         properties: {
-          type: { type: "string", enum: ["business-record", "knowledge"] },
-          recordId: { type: "string" },
-          title: { type: "string" },
+          action: { type: "string" },
+          reason: { type: "string" },
+          priority: { type: "string", enum: ["high", "medium", "low"] },
+        },
+      },
+    },
+    nextSteps: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["step", "description", "timeline"],
+        properties: {
+          step: { type: "number" },
+          description: { type: "string" },
+          timeline: { type: "string" },
         },
       },
     },
     confidence: { type: "string", enum: ["high", "medium", "low"] },
-    dataLimitations: {
+    limitations: {
       type: "array",
       items: { type: "string" },
     },
   },
 };
 
-function buildCoachContext(data, question) {
+function buildCoachContext(data, question, classification) {
   const s = summary(data);
   const parts = [];
 
-  // Business summary
-  parts.push("=== BUSINESS SUMMARY ===");
-  parts.push(`Today's sales: ₦${Number(s.salesTotal).toLocaleString()}`);
-  parts.push(`Today's expenses: ₦${Number(s.expensesTotal).toLocaleString()}`);
-  parts.push(`Customer debt: ₦${Number(s.customerDebt).toLocaleString()}`);
-  parts.push(`Customers owing: ${s.customersOwing}`);
-  parts.push(`Low stock items: ${s.lowStockCount}`);
-  parts.push(`Inventory value: ₦${Number(s.inventoryValue).toLocaleString()}`);
-  parts.push(`Best margin product: ${s.bestMarginProduct || "none"}`);
+  // === BUSINESS PROFILE ===
+  parts.push("=== BUSINESS PROFILE ===");
+  parts.push(`Business name: ${data.settings.businessName || "Not set"}`);
+  parts.push(`Location: ${data.settings.location || "Not set"}`);
 
-  // Recent sales (last 5)
-  const recentSales = data.sales.slice(0, 5);
-  if (recentSales.length) {
-    parts.push("=== RECENT SALES ===");
-    for (const sale of recentSales) {
-      parts.push(`${sale.product} x ${sale.quantity} @ ₦${sale.unitPrice} = ₦${(sale.quantity * sale.unitPrice).toLocaleString()} (${sale.channel})`);
+  // Knowledge Base documents that describe the business itself
+  const businessContextDocs = retrieveRelevantKnowledge(data, "business description goals target customers products services policies operating model");
+  if (businessContextDocs.length) {
+    parts.push("Knowledge Base context:");
+    for (const doc of businessContextDocs) {
+      parts.push(`- ${doc.title}: ${doc.excerpt}`);
     }
   }
 
-  // Recent expenses (last 5)
-  const recentExpenses = data.expenses.slice(0, 5);
-  if (recentExpenses.length) {
-    parts.push("=== RECENT EXPENSES ===");
-    for (const exp of recentExpenses) {
-      parts.push(`${exp.category}: ₦${exp.amount.toLocaleString()} (${exp.note})`);
-    }
-  }
+  // === BUSINESS INSIGHTS ===
+  parts.push("=== BUSINESS INSIGHTS ===");
 
-  // Top customers by debt
-  const topDebtors = [...data.customers]
-    .filter((c) => c.debt > 0)
+  // Inventory insights
+  const totalProducts = data.inventory.length;
+  const lowStock = data.inventory.filter((p) => p.stock <= 10);
+  const topSelling = [...data.inventory]
+    .sort((a, b) => (b.sellPrice - b.costPrice) - (a.sellPrice - a.costPrice))
+    .slice(0, 3);
+  const slowMoving = data.inventory.filter((p) => p.stock > 50 && p.stock > 0).slice(0, 3);
+  const highestMargin = [...data.inventory]
+    .sort((a, b) => ((b.sellPrice - b.costPrice) / (b.sellPrice || 1)) - ((a.sellPrice - a.costPrice) / (a.sellPrice || 1)))
+    .slice(0, 3);
+
+  parts.push(`Inventory: ${totalProducts} products total`);
+  if (lowStock.length) parts.push(`Low stock: ${lowStock.map(p => `${p.name} (${p.stock} left)`).join(", ")}`);
+  if (topSelling.length) parts.push(`Top selling: ${topSelling.map(p => `${p.name} (₦${p.sellPrice})`).join(", ")}`);
+  if (slowMoving.length) parts.push(`Slow moving: ${slowMoving.map(p => `${p.name} (${p.stock} units)`).join(", ")}`);
+  if (highestMargin.length) parts.push(`Highest margin: ${highestMargin.map(p => `${p.name} (${Math.round(((p.sellPrice - p.costPrice) / (p.sellPrice || 1)) * 100)}%)`).join(", ")}`);
+
+  // Customer insights
+  const totalCustomers = data.customers.length;
+  const customersOwing = data.customers.filter((c) => c.debt > 0);
+  const repeatCustomers = data.customers.filter((c) => c.history.length > 1);
+  const highestValueCustomers = [...data.customers]
     .sort((a, b) => b.debt - a.debt)
     .slice(0, 3);
-  if (topDebtors.length) {
-    parts.push("=== TOP DEBTORS ===");
-    for (const c of topDebtors) {
-      parts.push(`${c.name}: ₦${c.debt.toLocaleString()} (${c.status})`);
-    }
-  }
 
-  // Low stock products
-  const lowStock = data.inventory.filter((p) => p.stock <= 10);
-  if (lowStock.length) {
-    parts.push("=== LOW STOCK PRODUCTS ===");
-    for (const p of lowStock) {
-      parts.push(`${p.name}: ${p.stock} units remaining`);
-    }
-  }
+  parts.push(`Customers: ${totalCustomers} total`);
+  if (customersOwing.length) parts.push(`Owing money: ${customersOwing.length} customers (₦${customersOwing.reduce((sum, c) => sum + c.debt, 0).toLocaleString()})`);
+  if (repeatCustomers.length) parts.push(`Repeat customers: ${repeatCustomers.length}`);
+  if (highestValueCustomers.length) parts.push(`Highest value: ${highestValueCustomers.map(c => `${c.name} (₦${c.debt.toLocaleString()})`).join(", ")}`);
 
-  // Knowledge Base excerpts
-  const knowledge = retrieveRelevantKnowledge(data, question);
-  if (knowledge.length) {
-    parts.push("=== KNOWLEDGE BASE EXCERPTS ===");
-    for (const k of knowledge) {
-      parts.push(`[${k.title}] ${k.excerpt}`);
+  // Sales insights
+  const recentSales = data.sales.slice(0, 10);
+  const topProducts = [...new Set(data.sales.map(s => s.product))].slice(0, 5);
+  const channels = [...new Set(data.sales.map(s => s.channel))];
+  const revenueTrend = data.sales.length > 0
+    ? `₦${data.sales.slice(0, 5).reduce((sum, s) => sum + s.quantity * s.unitPrice, 0).toLocaleString()} (last 5 sales)`
+    : "No sales data";
+
+  parts.push(`Sales: ${data.sales.length} total records`);
+  if (recentSales.length) parts.push(`Recent: ${recentSales.map(s => `${s.product} x${s.quantity}`).join(", ")}`);
+  if (topProducts.length) parts.push(`Top products: ${topProducts.join(", ")}`);
+  if (channels.length) parts.push(`Channels: ${channels.join(", ")}`);
+  parts.push(`Revenue trend: ${revenueTrend}`);
+
+  // === QUESTION CONTEXT ===
+  if (classification === "strategic") {
+    const relevantKnowledge = retrieveRelevantKnowledge(data, question);
+    if (relevantKnowledge.length) {
+      parts.push("=== QUESTION CONTEXT ===");
+      for (const k of relevantKnowledge) {
+        parts.push(`[${k.title}] ${k.excerpt}`);
+      }
     }
   }
 
   return parts.join("\n");
 }
 
-async function coachReasoningModel(context) {
-  const prompt = [
-    "You are a business coach for a small business using MarketOS.",
-    "",
-    "Your job is to provide specific, data‑grounded advice based on the user's question and the business data provided below.",
-    "",
-    "Rules:",
-    "- NEVER invent facts.",
-    "- Use only the supplied business records and Knowledge Base excerpts.",
-    "- Distinguish observations from recommendations.",
-    "- Give no more than 3 recommendations.",
-    "- Reference specific products, customers, trends, or document facts.",
-    "- If the data is insufficient, say so clearly.",
-    "- Do not give generic advice without evidence.",
-    "- Do not claim external market knowledge unless it exists in the uploaded documents.",
-    "",
-    context,
-    "",
-    "Respond with JSON following this schema:",
-    JSON.stringify(COACH_SCHEMA, null, 2),
-  ].join("\n\n");
+async function coachReasoningModel(context, classification) {
+  let prompt;
+
+  if (classification === "strategic") {
+    prompt = [
+      "You are a business coach for a small business using MarketOS.",
+      "",
+      "Your job is to provide specific, data‑grounded strategic advice based on the user's question and the business data provided below.",
+      "",
+      "Rules:",
+      "- NEVER invent facts.",
+      "- Use only the supplied business records and Knowledge Base excerpts.",
+      "- NEVER give generic advice like 'improve marketing' or 'increase sales'.",
+      "- Every recommendation must reference specific products, customers, or data points from the provided business records.",
+      "- If you recommend marketing, specify the channel (e.g., WhatsApp, Facebook, referrals) and target audience based on customer data.",
+      "- If you recommend inventory changes, specify which products and why based on sales data.",
+      "- Use the Knowledge Base documents to understand the business's products, target customers, and goals, and tailor recommendations accordingly.",
+      "- Distinguish diagnosis from recommendations.",
+      "- Give no more than 3 recommendations.",
+      "- Reference specific products, customers, trends, or document facts.",
+      "- If the data is insufficient, say so clearly.",
+      "- Do not give generic advice without evidence.",
+      "- Do not claim external market knowledge unless it exists in the uploaded documents.",
+      "",
+      context,
+      "",
+      "Respond with JSON following this schema:",
+      JSON.stringify(COACH_SCHEMA, null, 2),
+    ].join("\n\n");
+  } else {
+    prompt = [
+      "You are a business coach for a small business using MarketOS.",
+      "",
+      "Your job is to provide specific, data‑grounded advice based on the user's question and the business data provided below.",
+      "",
+      "Rules:",
+      "- NEVER invent facts.",
+      "- Use only the supplied business records and Knowledge Base excerpts.",
+      "- Distinguish observations from recommendations.",
+      "- Give no more than 3 recommendations.",
+      "- Reference specific products, customers, trends, or document facts.",
+      "- If the data is insufficient, say so clearly.",
+      "- Do not give generic advice without evidence.",
+      "- Do not claim external market knowledge unless it exists in the uploaded documents.",
+      "",
+      context,
+      "",
+      "Respond with JSON following this schema:",
+      JSON.stringify(COACH_SCHEMA, null, 2),
+    ].join("\n\n");
+  }
 
   const templateFile = path.join(CONFIG_DIR, "marketos-json.jinja");
 
@@ -2315,13 +2364,18 @@ async function coachReasoningModel(context) {
     throw new Error("The MarketOS JSON chat template was not found at config/marketos-json.jinja.");
   }
 
+  // Use larger maxTokens for strategic questions
+  const maxTokens = classification === "strategic"
+    ? Math.max(256, Math.min(768, Number(AI_CONFIG.reasoning.maxTokens) || 512))
+    : Math.max(128, Math.min(512, Number(AI_CONFIG.reasoning.maxTokens) || 512));
+
   const { stdout } = await manager.acquire(
     'reasoning',
     configuredPath(AI_CONFIG.reasoning.binary),
     [
       "-m", configuredPath(AI_CONFIG.reasoning.model),
       "-p", prompt,
-      "-n", String(Math.max(128, Math.min(512, Number(AI_CONFIG.reasoning.maxTokens) || 512))),
+      "-n", String(maxTokens),
       "-c", String(Math.max(512, Math.min(1024, Number(AI_CONFIG.reasoning.context) || 2048))),
       "-t", String(Math.max(1, Number(AI_CONFIG.reasoning.threads) || DEFAULT_THREADS)),
       "--temp", "0",
@@ -2344,149 +2398,215 @@ async function coachReasoningModel(context) {
   return extractFirstJson(stdout);
 }
 
-function deterministicCoachAnswer(data, question) {
+function deterministicCoachAnswer(data, question, classification) {
   const s = summary(data);
   const knowledge = retrieveRelevantKnowledge(data, question);
 
-  const observations = [];
+  if (classification === "factual") {
+    const normalized = normalizeQuestion(question).toLowerCase();
+    const observations = [];
+    const evidenceUsed = [];
+    const dataLimitations = [];
+
+    // Business name
+    if (normalized.includes("business name") || normalized.includes("company name") || normalized.includes("what is my business called") || normalized.includes("what is my company called")) {
+      const name = data.settings.businessName || "";
+      if (name) {
+        observations.push(`Your business name is "${name}".`);
+        evidenceUsed.push({ type: "business-record", recordId: "settings", title: "Business name" });
+      } else if (knowledge.length) {
+        observations.push(`Based on your Knowledge Base documents, your business name is "${knowledge[0].title}".`);
+        evidenceUsed.push({ type: "knowledge", recordId: knowledge[0].id, title: knowledge[0].title });
+      } else {
+        dataLimitations.push("No business name is set in your settings or Knowledge Base.");
+      }
+    }
+
+    // Business location
+    if (normalized.includes("business location") || normalized.includes("company location") || normalized.includes("where is my business") || normalized.includes("where is my company")) {
+      const location = data.settings.location || "";
+      if (location) {
+        observations.push(`Your business location is "${location}".`);
+        evidenceUsed.push({ type: "business-record", recordId: "settings", title: "Business location" });
+      } else if (knowledge.length) {
+        observations.push(`Based on your Knowledge Base documents, your business location is "${knowledge[0].title}".`);
+        evidenceUsed.push({ type: "knowledge", recordId: knowledge[0].id, title: knowledge[0].title });
+      } else {
+        dataLimitations.push("No business location is set in your settings or Knowledge Base.");
+      }
+    }
+
+    // Total sales
+    if (normalized.includes("total sales") || normalized.includes("sales total") || normalized.includes("how much sales") || normalized.includes("sales amount")) {
+      if (s.salesTotal > 0) {
+        observations.push(`Today's total sales are ₦${Number(s.salesTotal).toLocaleString()}.`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's sales total" });
+      } else {
+        dataLimitations.push("No sales records exist yet.");
+      }
+    }
+
+    // Total expenses
+    if (normalized.includes("total expenses") || normalized.includes("expenses total") || normalized.includes("how much expenses") || normalized.includes("expenses amount")) {
+      if (s.expensesTotal > 0) {
+        observations.push(`Today's total expenses are ₦${Number(s.expensesTotal).toLocaleString()}.`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's expenses total" });
+      } else {
+        dataLimitations.push("No expense records exist yet.");
+      }
+    }
+
+    // Customer debt
+    if (normalized.includes("customer debt") || normalized.includes("outstanding debt") || normalized.includes("how much debt") || normalized.includes("debt amount")) {
+      if (s.customerDebt > 0) {
+        observations.push(`Outstanding customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Customer debt" });
+      } else {
+        dataLimitations.push("No customer debt records exist yet.");
+      }
+    }
+
+    // Low stock
+    if (normalized.includes("low stock") || normalized.includes("low inventory") || normalized.includes("stock out") || normalized.includes("restock")) {
+      if (s.lowStockCount > 0) {
+        observations.push(`${s.lowStockCount} product(s) are low on stock.`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Low stock count" });
+      } else {
+        dataLimitations.push("No products are low on stock.");
+      }
+    }
+
+    // If no direct match, fall back to generic observations
+    if (observations.length === 0) {
+      if (s.salesTotal > 0) {
+        observations.push(`Today's sales total is ₦${Number(s.salesTotal).toLocaleString()}.`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's sales total" });
+      }
+      if (s.expensesTotal > 0) {
+        observations.push(`Today's expenses total is ₦${Number(s.expensesTotal).toLocaleString()}.`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's expenses total" });
+      }
+      if (s.customerDebt > 0) {
+        observations.push(`Customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Customer debt" });
+      }
+      if (s.lowStockCount > 0) {
+        observations.push(`${s.lowStockCount} product(s) are low on stock.`);
+        evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Low stock count" });
+      }
+    }
+
+    // Observations from knowledge (only if not already answered)
+    if (observations.length === 0) {
+      for (const k of knowledge) {
+        observations.push(`Knowledge document "${k.title}" mentions: ${k.excerpt.slice(0, 100)}...`);
+        evidenceUsed.push({ type: "knowledge", recordId: k.id, title: k.title });
+      }
+    }
+
+    const recommendations = [];
+    if (s.customerDebt > 0) {
+      recommendations.push({ action: "Send payment reminders to customers with outstanding debt.", reason: "Customer debt is ₦" + s.customerDebt.toLocaleString(), priority: "high" });
+    }
+    if (s.lowStockCount > 0) {
+      recommendations.push({ action: "Restock low inventory items to avoid stockouts.", reason: s.lowStockCount + " product(s) are low on stock.", priority: "high" });
+    }
+    if (s.salesTotal === 0 && s.expensesTotal === 0) {
+      recommendations.push({ action: "Start recording sales and expenses to get actionable insights.", reason: "No sales or expense records exist yet.", priority: "medium" });
+    }
+    if (!recommendations.length) {
+      recommendations.push({ action: "Continue monitoring sales and expenses.", reason: "Your business data looks balanced.", priority: "low" });
+    }
+
+    const dataLimitationsFinal = [];
+    if (!data.sales.length && !data.expenses.length) {
+      dataLimitationsFinal.push("No sales or expense records exist yet.");
+    }
+    if (!knowledge.length && observations.length === 0) {
+      dataLimitationsFinal.push("No relevant Knowledge Base documents were found for this question.");
+    }
+    if (!dataLimitationsFinal.length) {
+      dataLimitationsFinal.push("Data is sufficient for basic analysis.");
+    }
+
+    const confidence = observations.length > 0 ? (data.sales.length > 0 && data.expenses.length > 0 ? "medium" : "low") : "low";
+
+    return {
+      diagnosis: observations.length ? observations.join(" ") : "I don't have enough data to answer that question.",
+      recommendations,
+      nextSteps: [],
+      confidence,
+      limitations: dataLimitationsFinal,
+    };
+  }
+
+  // Strategic fallback
+  const diagnosis = [];
   const recommendations = [];
-  const evidenceUsed = [];
-  const dataLimitations = [];
+  const nextSteps = [];
+  const limitations = [];
 
-  // Try to answer the actual question first
-  const normalized = normalizeQuestion(question).toLowerCase();
-
-  // Business name
-  if (normalized.includes("business name") || normalized.includes("company name") || normalized.includes("what is my business called") || normalized.includes("what is my company called")) {
-    const name = data.settings.businessName || "";
-    if (name) {
-      observations.push(`Your business name is "${name}".`);
-      evidenceUsed.push({ type: "business-record", recordId: "settings", title: "Business name" });
-    } else if (knowledge.length) {
-      observations.push(`Based on your Knowledge Base documents, your business name is "${knowledge[0].title}".`);
-      evidenceUsed.push({ type: "knowledge", recordId: knowledge[0].id, title: knowledge[0].title });
-    } else {
-      dataLimitations.push("No business name is set in your settings or Knowledge Base.");
-    }
+  if (s.salesTotal > 0) {
+    diagnosis.push(`Today's sales total is ₦${Number(s.salesTotal).toLocaleString()}.`);
   }
-
-  // Business location
-  if (normalized.includes("business location") || normalized.includes("company location") || normalized.includes("where is my business") || normalized.includes("where is my company")) {
-    const location = data.settings.location || "";
-    if (location) {
-      observations.push(`Your business location is "${location}".`);
-      evidenceUsed.push({ type: "business-record", recordId: "settings", title: "Business location" });
-    } else if (knowledge.length) {
-      observations.push(`Based on your Knowledge Base documents, your business location is "${knowledge[0].title}".`);
-      evidenceUsed.push({ type: "knowledge", recordId: knowledge[0].id, title: knowledge[0].title });
-    } else {
-      dataLimitations.push("No business location is set in your settings or Knowledge Base.");
-    }
+  if (s.expensesTotal > 0) {
+    diagnosis.push(`Today's expenses total is ₦${Number(s.expensesTotal).toLocaleString()}.`);
   }
-
-  // Total sales
-  if (normalized.includes("total sales") || normalized.includes("sales total") || normalized.includes("how much sales") || normalized.includes("sales amount")) {
-    if (s.salesTotal > 0) {
-      observations.push(`Today's total sales are ₦${Number(s.salesTotal).toLocaleString()}.`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's sales total" });
-    } else {
-      dataLimitations.push("No sales records exist yet.");
-    }
-  }
-
-  // Total expenses
-  if (normalized.includes("total expenses") || normalized.includes("expenses total") || normalized.includes("how much expenses") || normalized.includes("expenses amount")) {
-    if (s.expensesTotal > 0) {
-      observations.push(`Today's total expenses are ₦${Number(s.expensesTotal).toLocaleString()}.`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's expenses total" });
-    } else {
-      dataLimitations.push("No expense records exist yet.");
-    }
-  }
-
-  // Customer debt
-  if (normalized.includes("customer debt") || normalized.includes("outstanding debt") || normalized.includes("how much debt") || normalized.includes("debt amount")) {
-    if (s.customerDebt > 0) {
-      observations.push(`Outstanding customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Customer debt" });
-    } else {
-      dataLimitations.push("No customer debt records exist yet.");
-    }
-  }
-
-  // Low stock
-  if (normalized.includes("low stock") || normalized.includes("low inventory") || normalized.includes("stock out") || normalized.includes("restock")) {
-    if (s.lowStockCount > 0) {
-      observations.push(`${s.lowStockCount} product(s) are low on stock.`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Low stock count" });
-    } else {
-      dataLimitations.push("No products are low on stock.");
-    }
-  }
-
-  // If no direct match, fall back to generic observations
-  if (observations.length === 0) {
-    if (s.salesTotal > 0) {
-      observations.push(`Today's sales total is ₦${Number(s.salesTotal).toLocaleString()}.`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's sales total" });
-    }
-    if (s.expensesTotal > 0) {
-      observations.push(`Today's expenses total is ₦${Number(s.expensesTotal).toLocaleString()}.`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Today's expenses total" });
-    }
-    if (s.customerDebt > 0) {
-      observations.push(`Customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Customer debt" });
-    }
-    if (s.lowStockCount > 0) {
-      observations.push(`${s.lowStockCount} product(s) are low on stock.`);
-      evidenceUsed.push({ type: "business-record", recordId: "summary", title: "Low stock count" });
-    }
-  }
-
-  // Observations from knowledge (only if not already answered)
-  if (observations.length === 0) {
-    for (const k of knowledge) {
-      observations.push(`Knowledge document "${k.title}" mentions: ${k.excerpt.slice(0, 100)}...`);
-      evidenceUsed.push({ type: "knowledge", recordId: k.id, title: k.title });
-    }
-  }
-
-  // Recommendations based on data
   if (s.customerDebt > 0) {
-    recommendations.push("Send payment reminders to customers with outstanding debt.");
+    diagnosis.push(`Customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`);
   }
   if (s.lowStockCount > 0) {
-    recommendations.push("Restock low inventory items to avoid stockouts.");
+    diagnosis.push(`${s.lowStockCount} product(s) are low on stock.`);
+  }
+
+  if (s.customerDebt > 0) {
+    recommendations.push({
+      action: "Send payment reminders to customers with outstanding debt.",
+      reason: `Customer debt is ₦${s.customerDebt.toLocaleString()} across ${s.customersOwing} customer(s).`,
+      priority: "high",
+    });
+  }
+  if (s.lowStockCount > 0) {
+    recommendations.push({
+      action: "Restock low inventory items to avoid stockouts.",
+      reason: `${s.lowStockCount} product(s) are low on stock.`,
+      priority: "high",
+    });
   }
   if (s.salesTotal === 0 && s.expensesTotal === 0) {
-    recommendations.push("Start recording sales and expenses to get actionable insights.");
+    recommendations.push({
+      action: "Start recording sales and expenses to get actionable insights.",
+      reason: "No sales or expense records exist yet.",
+      priority: "medium",
+    });
   }
 
   if (!recommendations.length) {
-    recommendations.push("Your business data looks balanced. Continue monitoring sales and expenses.");
+    recommendations.push({
+      action: "Continue monitoring sales and expenses.",
+      reason: "Your business data looks balanced.",
+      priority: "low",
+    });
   }
 
-  // Data limitations
   if (!data.sales.length && !data.expenses.length) {
-    dataLimitations.push("No sales or expense records exist yet.");
+    limitations.push("No sales or expense records exist yet.");
   }
-  if (!knowledge.length && observations.length === 0) {
-    dataLimitations.push("No relevant Knowledge Base documents were found for this question.");
+  if (!knowledge.length) {
+    limitations.push("No relevant Knowledge Base documents were found for this question.");
   }
-  if (!dataLimitations.length) {
-    dataLimitations.push("Data is sufficient for basic analysis.");
+  if (!limitations.length) {
+    limitations.push("Data is sufficient for basic analysis.");
   }
 
-  const confidence = observations.length > 0 ? (data.sales.length > 0 && data.expenses.length > 0 ? "medium" : "low") : "low";
+  const confidence = diagnosis.length > 0 ? (data.sales.length > 0 && data.expenses.length > 0 ? "medium" : "low") : "low";
 
   return {
-    answer: observations.length ? observations.join(" ") : "I don't have enough data to answer that question.",
-    observations,
+    diagnosis: diagnosis.length ? diagnosis.join(" ") : "I don't have enough data to answer that question.",
     recommendations,
-    evidenceUsed,
+    nextSteps,
     confidence,
-    dataLimitations,
+    limitations,
   };
 }
 
@@ -2502,6 +2622,51 @@ function normalizeQuestion(value) {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function classifyCoachQuestion(question) {
+  const normalized = normalizeQuestion(question).toLowerCase();
+
+  // Factual keywords
+  const factualKeywords = [
+    "total", "how much", "what is", "how many", "when", "who",
+    "business name", "company name", "business location", "company location",
+    "sales total", "expenses total", "customer debt", "outstanding debt",
+    "low stock", "low inventory", "stock out", "restock",
+    "tell me my", "what are my", "how much do i",
+  ];
+  for (const keyword of factualKeywords) {
+    if (normalized.includes(keyword)) {
+      return "factual";
+    }
+  }
+
+  // Operational keywords
+  const operationalKeywords = [
+    "how do i", "how to", "steps to", "process", "procedure",
+    "what should i do to", "how can i", "explain",
+  ];
+  for (const keyword of operationalKeywords) {
+    if (normalized.includes(keyword)) {
+      return "operational";
+    }
+  }
+
+  // Strategic keywords
+  const strategicKeywords = [
+    "improve", "grow", "increase", "better", "strategy", "recommend",
+    "suggest", "advice", "next steps", "optimize", "expand",
+    "how can i improve", "how can i grow", "what should i do",
+    "business intelligence", "actionable", "opportunities",
+  ];
+  for (const keyword of strategicKeywords) {
+    if (normalized.includes(keyword)) {
+      return "strategic";
+    }
+  }
+
+  // Default to strategic for business coach
+  return "strategic";
 }
 
 function directFactualAnswer(data, question) {
@@ -2521,18 +2686,11 @@ function directFactualAnswer(data, question) {
     const name = data.settings?.businessName || "";
     if (name) {
       return {
-        answer: `Your business name is ${name}.`,
-        observations: [`Your business name is ${name}.`],
+        diagnosis: `Your business name is ${name}.`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "business-record",
-            recordId: "settings",
-            title: "Business name"
-          }
-        ],
+        nextSteps: [],
         confidence: "high",
-        dataLimitations: []
+        limitations: []
       };
     }
 
@@ -2540,28 +2698,20 @@ function directFactualAnswer(data, question) {
     const knowledge = retrieveRelevantKnowledge(data, "business name");
     if (knowledge.length) {
       return {
-        answer: `Based on your Knowledge Base documents, your business name is "${knowledge[0].title}".`,
-        observations: [`Based on your Knowledge Base documents, your business name is "${knowledge[0].title}".`],
+        diagnosis: `Based on your Knowledge Base documents, your business name is "${knowledge[0].title}".`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "knowledge",
-            recordId: knowledge[0].id,
-            title: knowledge[0].title
-          }
-        ],
+        nextSteps: [],
         confidence: "medium",
-        dataLimitations: ["Business name was found in Knowledge Base, not in settings."]
+        limitations: ["Business name was found in Knowledge Base, not in settings."]
       };
     }
 
     return {
-      answer: "I don't have your business name in MarketOS yet.",
-      observations: [],
+      diagnosis: "I don't have your business name in MarketOS yet.",
       recommendations: [],
-      evidenceUsed: [],
+      nextSteps: [],
       confidence: "low",
-      dataLimitations: [
+      limitations: [
         "No business name is saved in settings or found in the Knowledge Base."
       ]
     };
@@ -2579,46 +2729,31 @@ function directFactualAnswer(data, question) {
     const location = data.settings?.location || "";
     if (location) {
       return {
-        answer: `Your business location is ${location}.`,
-        observations: [`Your business location is ${location}.`],
+        diagnosis: `Your business location is ${location}.`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "business-record",
-            recordId: "settings",
-            title: "Business location"
-          }
-        ],
+        nextSteps: [],
         confidence: "high",
-        dataLimitations: []
+        limitations: []
       };
     }
 
     const knowledge = retrieveRelevantKnowledge(data, "business location");
     if (knowledge.length) {
       return {
-        answer: `Based on your Knowledge Base documents, your business location is "${knowledge[0].title}".`,
-        observations: [`Based on your Knowledge Base documents, your business location is "${knowledge[0].title}".`],
+        diagnosis: `Based on your Knowledge Base documents, your business location is "${knowledge[0].title}".`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "knowledge",
-            recordId: knowledge[0].id,
-            title: knowledge[0].title
-          }
-        ],
+        nextSteps: [],
         confidence: "medium",
-        dataLimitations: ["Business location was found in Knowledge Base, not in settings."]
+        limitations: ["Business location was found in Knowledge Base, not in settings."]
       };
     }
 
     return {
-      answer: "I don't have your business location in MarketOS yet.",
-      observations: [],
+      diagnosis: "I don't have your business location in MarketOS yet.",
       recommendations: [],
-      evidenceUsed: [],
+      nextSteps: [],
       confidence: "low",
-      dataLimitations: [
+      limitations: [
         "No business location is saved in settings or found in the Knowledge Base."
       ]
     };
@@ -2636,28 +2771,20 @@ function directFactualAnswer(data, question) {
     const s = summary(data);
     if (s.salesTotal > 0) {
       return {
-        answer: `Today's total sales are ₦${Number(s.salesTotal).toLocaleString()}.`,
-        observations: [`Today's total sales are ₦${Number(s.salesTotal).toLocaleString()}.`],
+        diagnosis: `Today's total sales are ₦${Number(s.salesTotal).toLocaleString()}.`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "business-record",
-            recordId: "summary",
-            title: "Today's sales total"
-          }
-        ],
+        nextSteps: [],
         confidence: "high",
-        dataLimitations: []
+        limitations: []
       };
     }
 
     return {
-      answer: "No sales records exist yet.",
-      observations: [],
+      diagnosis: "No sales records exist yet.",
       recommendations: [],
-      evidenceUsed: [],
+      nextSteps: [],
       confidence: "low",
-      dataLimitations: ["No sales records exist yet."]
+      limitations: ["No sales records exist yet."]
     };
   }
 
@@ -2673,28 +2800,20 @@ function directFactualAnswer(data, question) {
     const s = summary(data);
     if (s.expensesTotal > 0) {
       return {
-        answer: `Today's total expenses are ₦${Number(s.expensesTotal).toLocaleString()}.`,
-        observations: [`Today's total expenses are ₦${Number(s.expensesTotal).toLocaleString()}.`],
+        diagnosis: `Today's total expenses are ₦${Number(s.expensesTotal).toLocaleString()}.`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "business-record",
-            recordId: "summary",
-            title: "Today's expenses total"
-          }
-        ],
+        nextSteps: [],
         confidence: "high",
-        dataLimitations: []
+        limitations: []
       };
     }
 
     return {
-      answer: "No expense records exist yet.",
-      observations: [],
+      diagnosis: "No expense records exist yet.",
       recommendations: [],
-      evidenceUsed: [],
+      nextSteps: [],
       confidence: "low",
-      dataLimitations: ["No expense records exist yet."]
+      limitations: ["No expense records exist yet."]
     };
   }
 
@@ -2710,28 +2829,20 @@ function directFactualAnswer(data, question) {
     const s = summary(data);
     if (s.customerDebt > 0) {
       return {
-        answer: `Outstanding customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`,
-        observations: [`Outstanding customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`],
+        diagnosis: `Outstanding customer debt is ₦${Number(s.customerDebt).toLocaleString()} across ${s.customersOwing} customer(s).`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "business-record",
-            recordId: "summary",
-            title: "Customer debt"
-          }
-        ],
+        nextSteps: [],
         confidence: "high",
-        dataLimitations: []
+        limitations: []
       };
     }
 
     return {
-      answer: "No customer debt records exist yet.",
-      observations: [],
+      diagnosis: "No customer debt records exist yet.",
       recommendations: [],
-      evidenceUsed: [],
+      nextSteps: [],
       confidence: "low",
-      dataLimitations: ["No customer debt records exist yet."]
+      limitations: ["No customer debt records exist yet."]
     };
   }
 
@@ -2747,28 +2858,20 @@ function directFactualAnswer(data, question) {
     const s = summary(data);
     if (s.lowStockCount > 0) {
       return {
-        answer: `${s.lowStockCount} product(s) are low on stock.`,
-        observations: [`${s.lowStockCount} product(s) are low on stock.`],
+        diagnosis: `${s.lowStockCount} product(s) are low on stock.`,
         recommendations: [],
-        evidenceUsed: [
-          {
-            type: "business-record",
-            recordId: "summary",
-            title: "Low stock count"
-          }
-        ],
+        nextSteps: [],
         confidence: "high",
-        dataLimitations: []
+        limitations: []
       };
     }
 
     return {
-      answer: "No products are low on stock.",
-      observations: [],
+      diagnosis: "No products are low on stock.",
       recommendations: [],
-      evidenceUsed: [],
+      nextSteps: [],
       confidence: "low",
-      dataLimitations: ["No products are low on stock."]
+      limitations: ["No products are low on stock."]
     };
   }
 
@@ -2777,24 +2880,28 @@ function directFactualAnswer(data, question) {
 }
 
 async function coachAnswer(data, question) {
-  // Try direct factual answer first
-  const direct = directFactualAnswer(data, question);
-  if (direct) {
-    return direct;
+  const classification = classifyCoachQuestion(question);
+
+  // For factual questions, try direct answer first
+  if (classification === "factual") {
+    const direct = directFactualAnswer(data, question);
+    if (direct) {
+      return direct;
+    }
   }
 
-  const context = buildCoachContext(data, question);
+  const context = buildCoachContext(data, question, classification);
 
   if (executableReady(AI_CONFIG.reasoning)) {
     try {
-      return await queueAiTask(() => coachReasoningModel(context));
+      return await queueAiTask(() => coachReasoningModel(context, classification));
     } catch (error) {
       // Fallback to deterministic
       console.warn("Coach reasoning model failed, using deterministic fallback:", error.message);
     }
   }
 
-  return deterministicCoachAnswer(data, question);
+  return deterministicCoachAnswer(data, question, classification);
 }
 
 function createKnowledgeItem(data, title, body) {
@@ -3943,6 +4050,7 @@ export {
   COACH_SCHEMA,
   directFactualAnswer,
   normalizeQuestion,
+  classifyCoachQuestion,
 };
 
 // Graceful shutdown
