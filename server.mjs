@@ -2284,7 +2284,7 @@ function buildCoachContext(data, question, classification) {
   return parts.join("\n");
 }
 
-async function coachReasoningModel(context, classification) {
+async function coachReasoningModel(context, classification, question) {
   const modelStart = Date.now();
   let prompt;
 
@@ -2887,7 +2887,7 @@ async function coachAnswer(data, question) {
 
   if (executableReady(AI_CONFIG.reasoning)) {
     try {
-      return await queueAiTask(() => coachReasoningModel(context, classification));
+      return await queueAiTask(() => coachReasoningModel(context, classification, question));
     } catch (error) {
       // Fallback to deterministic
       console.warn("Coach reasoning model failed, using deterministic fallback:", error.message);
