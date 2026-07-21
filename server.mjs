@@ -2311,6 +2311,7 @@ function buildCoachContext(data, question, classification) {
 }
 
 async function coachReasoningModel(context, classification) {
+  const modelStart = Date.now();
   let prompt;
 
   if (classification === "strategic") {
@@ -2399,6 +2400,8 @@ async function coachReasoningModel(context, classification) {
     { timeoutSeconds: AI_CONFIG.reasoning.timeoutSeconds },
   );
 
+  console.log(`[TIMING] coach reasoning model: ${Date.now() - modelStart}ms`);
+  console.log(`[TIMING] coach prompt chars: ${prompt.length}`);
   return extractFirstJson(stdout);
 }
 
