@@ -2194,7 +2194,7 @@ function retrieveRelevantKnowledge(data, question, options = {}) {
 const COACH_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["diagnosis", "recommendations", "nextSteps", "confidence", "limitations"],
+  required: ["diagnosis", "recommendations", "nextSteps", "confidence", "dataLimitations"],
   properties: {
     diagnosis: { type: "string" },
     recommendations: {
@@ -2202,29 +2202,19 @@ const COACH_SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["action", "reason", "priority"],
+        required: ["action", "reason"],
         properties: {
           action: { type: "string" },
           reason: { type: "string" },
-          priority: { type: "string", enum: ["high", "medium", "low"] },
         },
       },
     },
     nextSteps: {
       type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["step", "description", "timeline"],
-        properties: {
-          step: { type: "number" },
-          description: { type: "string" },
-          timeline: { type: "string" },
-        },
-      },
+      items: { type: "string" },
     },
     confidence: { type: "string", enum: ["high", "medium", "low"] },
-    limitations: {
+    dataLimitations: {
       type: "array",
       items: { type: "string" },
     },
