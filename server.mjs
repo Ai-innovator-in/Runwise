@@ -2402,6 +2402,9 @@ async function coachReasoningModel(context, classification) {
 
   console.log(`[TIMING] coach reasoning model: ${Date.now() - modelStart}ms`);
   console.log(`[TIMING] coach prompt chars: ${prompt.length}`);
+  console.log("=== RAW COACH OUTPUT ===");
+  console.log(stdout);
+  console.log("=== END RAW COACH OUTPUT ===");
   return extractFirstJson(stdout);
 }
 
