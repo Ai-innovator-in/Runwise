@@ -8,6 +8,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function logTiming(label, start) {
+  console.log(`[TIMING] ${label}: ${Date.now() - start}ms`);
+}
 const PORT = Number(process.env.PORT || 8787);
 const RESOURCE_DIR = process.env.MARKETOS_RESOURCE_DIR || __dirname;
 const DATA_DIR = process.env.MARKETOS_DATA_DIR || path.join(__dirname, "data");
@@ -3813,14 +3817,10 @@ async function handleApi(req, res) {
     req.method === "POST" &&
     url.pathname === "/api/coach"
   ) {
-    return send(
-      res,
-      200,
-      await coachAnswer(
-        data,
-        body.question,
-      ),
-    );
+    const coachStart = Date.now();
+    const result = await coachAnswer(data, body.question);
+    logTiming("coach total", coachStart);
+    return send(res, 200, result);
   }
 
   if (
