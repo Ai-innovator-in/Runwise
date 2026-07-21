@@ -2194,30 +2194,14 @@ function retrieveRelevantKnowledge(data, question, options = {}) {
 const COACH_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["diagnosis", "recommendations", "nextSteps", "confidence", "dataLimitations"],
+  required: ["answer", "actions", "confidence"],
   properties: {
-    diagnosis: { type: "string" },
-    recommendations: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["action", "reason"],
-        properties: {
-          action: { type: "string" },
-          reason: { type: "string" },
-        },
-      },
-    },
-    nextSteps: {
+    answer: { type: "string" },
+    actions: {
       type: "array",
       items: { type: "string" },
     },
     confidence: { type: "string", enum: ["high", "medium", "low"] },
-    dataLimitations: {
-      type: "array",
-      items: { type: "string" },
-    },
   },
 };
 
@@ -2334,13 +2318,10 @@ async function coachReasoningModel(context, classification) {
       "",
       "* Return ONLY valid JSON.",
       "* Keep the response extremely concise.",
-      "* Diagnosis: maximum 2 sentences.",
-      "* Maximum 3 recommendations.",
-      "* Each recommendation action: maximum 8 words.",
-      "* Each recommendation reason: maximum 15 words.",
-      "* Maximum 3 nextSteps.",
-      "* Each nextStep: maximum 12 words.",
-      "* Do not repeat the same information in diagnosis, recommendations, and nextSteps.",
+      "* Answer: maximum 3 sentences.",
+      "* Maximum 3 actions.",
+      "* Each action: maximum 12 words.",
+      "* Do not repeat the same information in answer and actions.",
       "* Finish the complete JSON object before adding more detail.",
     ].join("\n\n");
   } else {
