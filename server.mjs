@@ -2519,16 +2519,16 @@ function deterministicCoachAnswer(data, question, classification) {
 
     const recommendations = [];
     if (s.customerDebt > 0) {
-      recommendations.push({ action: "Send payment reminders to customers with outstanding debt.", reason: "Customer debt is ₦" + s.customerDebt.toLocaleString(), priority: "high" });
+      recommendations.push({ action: "Send payment reminders to customers with outstanding debt.", reason: "Customer debt is ₦" + s.customerDebt.toLocaleString() });
     }
     if (s.lowStockCount > 0) {
-      recommendations.push({ action: "Restock low inventory items to avoid stockouts.", reason: s.lowStockCount + " product(s) are low on stock.", priority: "high" });
+      recommendations.push({ action: "Restock low inventory items to avoid stockouts.", reason: s.lowStockCount + " product(s) are low on stock." });
     }
     if (s.salesTotal === 0 && s.expensesTotal === 0) {
-      recommendations.push({ action: "Start recording sales and expenses to get actionable insights.", reason: "No sales or expense records exist yet.", priority: "medium" });
+      recommendations.push({ action: "Start recording sales and expenses to get actionable insights.", reason: "No sales or expense records exist yet." });
     }
     if (!recommendations.length) {
-      recommendations.push({ action: "Continue monitoring sales and expenses.", reason: "Your business data looks balanced.", priority: "low" });
+      recommendations.push({ action: "Continue monitoring sales and expenses.", reason: "Your business data looks balanced." });
     }
 
     const dataLimitationsFinal = [];
@@ -2549,7 +2549,7 @@ function deterministicCoachAnswer(data, question, classification) {
       recommendations,
       nextSteps: [],
       confidence,
-      limitations: dataLimitationsFinal,
+      dataLimitations: dataLimitationsFinal,
     };
   }
 
@@ -2557,7 +2557,7 @@ function deterministicCoachAnswer(data, question, classification) {
   const diagnosis = [];
   const recommendations = [];
   const nextSteps = [];
-  const limitations = [];
+  const dataLimitations = [];
 
   if (s.salesTotal > 0) {
     diagnosis.push(`Today's sales total is ₦${Number(s.salesTotal).toLocaleString()}.`);
@@ -2576,21 +2576,18 @@ function deterministicCoachAnswer(data, question, classification) {
     recommendations.push({
       action: "Send payment reminders to customers with outstanding debt.",
       reason: `Customer debt is ₦${s.customerDebt.toLocaleString()} across ${s.customersOwing} customer(s).`,
-      priority: "high",
     });
   }
   if (s.lowStockCount > 0) {
     recommendations.push({
       action: "Restock low inventory items to avoid stockouts.",
       reason: `${s.lowStockCount} product(s) are low on stock.`,
-      priority: "high",
     });
   }
   if (s.salesTotal === 0 && s.expensesTotal === 0) {
     recommendations.push({
       action: "Start recording sales and expenses to get actionable insights.",
       reason: "No sales or expense records exist yet.",
-      priority: "medium",
     });
   }
 
@@ -2598,18 +2595,17 @@ function deterministicCoachAnswer(data, question, classification) {
     recommendations.push({
       action: "Continue monitoring sales and expenses.",
       reason: "Your business data looks balanced.",
-      priority: "low",
     });
   }
 
   if (!data.sales.length && !data.expenses.length) {
-    limitations.push("No sales or expense records exist yet.");
+    dataLimitations.push("No sales or expense records exist yet.");
   }
   if (!knowledge.length) {
-    limitations.push("No relevant Knowledge Base documents were found for this question.");
+    dataLimitations.push("No relevant Knowledge Base documents were found for this question.");
   }
-  if (!limitations.length) {
-    limitations.push("Data is sufficient for basic analysis.");
+  if (!dataLimitations.length) {
+    dataLimitations.push("Data is sufficient for basic analysis.");
   }
 
   const confidence = diagnosis.length > 0 ? (data.sales.length > 0 && data.expenses.length > 0 ? "medium" : "low") : "low";
@@ -2619,7 +2615,7 @@ function deterministicCoachAnswer(data, question, classification) {
     recommendations,
     nextSteps,
     confidence,
-    limitations,
+    dataLimitations,
   };
 }
 
