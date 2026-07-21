@@ -2329,6 +2329,19 @@ async function coachReasoningModel(context, classification) {
       "",
       "Respond with JSON following this schema:",
       JSON.stringify(COACH_SCHEMA, null, 2),
+      "",
+      "Response length rules:",
+      "",
+      "* Return ONLY valid JSON.",
+      "* Keep the response extremely concise.",
+      "* Diagnosis: maximum 2 sentences.",
+      "* Maximum 3 recommendations.",
+      "* Each recommendation action: maximum 8 words.",
+      "* Each recommendation reason: maximum 15 words.",
+      "* Maximum 3 nextSteps.",
+      "* Each nextStep: maximum 12 words.",
+      "* Do not repeat the same information in diagnosis, recommendations, and nextSteps.",
+      "* Finish the complete JSON object before adding more detail.",
     ].join("\n\n");
   } else {
     prompt = [
