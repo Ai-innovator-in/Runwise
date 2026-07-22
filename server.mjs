@@ -6,6 +6,7 @@ import { existsSync, createReadStream, readFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 import { initDatabase, closeDatabase, isDatabaseReady } from "./db/index.js";
 import { migrateFromJson, isMigrationNeeded } from "./db/migrate.js";
 
@@ -3042,7 +3043,7 @@ function deleteKnowledgeItem(data, id) {
   return true;
 }
 
-function makeInvoicePdf(
+async function makeInvoicePdf(
   data,
   invoiceId,
 ) {
@@ -3084,155 +3085,139 @@ function makeInvoicePdf(
   const amountPaid = invoice.amountPaid;
   const balanceDue = balance;
 
-  // Build PDF content stream
-  const lines = [];
+  // Create PDF document
+  const pdfDoc = await PDFDocument.create();
+  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  // Helper to add text at (x, y) with optional font size and bold
-  const addText = (x, y, text, size = 10, bold = false) => {
-    const font = bold ? "/F2" : "/F1";
-    lines.push(`BT ${font} ${size} Tf ${x} ${y} Td (${text}) Tj ET`);
-  };
+  const page = pdfDoc.addPage([612, 792]); // US Letter size
+  const { width, height } = page.getSize();
 
-  // Helper to draw a filled rectangle
-  const fillRect = (x, y, w, h, r, g, b) => {
-    lines.push(`q ${r} ${g} ${b} rg ${x} ${y} ${w} ${h} re f Q`);
+  const margin = 72; // 1 inch margins
+  const pageWidth = width - 2 * margin;
+  const leftX = margin;
+  const rightX = width - margin;
+
+  // Helper to draw text
+  const drawText = (text, x, y, size = 10, bold = false, color = rgb(0, 0, 0)) => {
+    const font = bold ? helveticaBoldFont : helveticaFont;
+    page.drawText(text, {
+      x,
+      y,
+      size,
+      font,
+      color,
+    });
   };
 
   // Helper to draw a line
-  const drawLine = (x1, y1, x2, y2) => {
-    lines.push(`q 1 w ${x1} ${y1} ${x2 - x1} ${y2 - y1} re S Q`);
+  const drawLine = (x1, y1, x2, y2, color = rgb(0.8, 0.8, 0.8)) => {
+    page.drawLine({
+      start: { x: x1, y: y1 },
+      end: { x: x2, y: y2 },
+      thickness: 1,
+      color,
+    });
+  };
+
+  // Helper to draw a filled rectangle
+  const fillRect = (x, y, w, h, color = rgb(0.95, 0.95, 0.95)) => {
+    page.drawRectangle({
+      x,
+      y,
+      width: w,
+      height: h,
+      color,
+    });
   };
 
   // ========== HEADER ==========
   // Left side: Business info
-  addText(72, 740, businessName, 20, true);
+  drawText(businessName, leftX, height - margin - 20, 20, true);
   if (industry) {
-    addText(72, 718, industry, 10);
+    drawText(industry, leftX, height - margin - 42, 10);
   }
   if (location) {
-    addText(72, 702, location, 10);
+    drawText(location, leftX, height - margin - 58, 10);
   }
 
   // Right side: Invoice details
-  const rightX = 380;
-  addText(rightX, 740, "INVOICE", 24, true);
-  addText(rightX, 714, `Invoice #: ${invoiceNumber}`, 10);
-  addText(rightX, 696, `Date: ${invoiceDate}`, 10);
-  addText(rightX, 678, `Due Date: ${dueDate}`, 10);
+  const invoiceRightX = rightX - 200;
+  drawText("INVOICE", invoiceRightX, height - margin - 20, 24, true);
+  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, height - margin - 46, 10);
+  drawText(`Date: ${invoiceDate}`, invoiceRightX, height - margin - 62, 10);
+  drawText(`Due Date: ${dueDate}`, invoiceRightX, height - margin - 78, 10);
 
   // Separator line
-  drawLine(72, 660, 540, 660);
+  drawLine(leftX, height - margin - 100, rightX, height - margin - 100);
 
   // ========== CUSTOMER SECTION ==========
-  addText(72, 640, "BILL TO", 12, true);
-  addText(72, 620, customerName, 12);
+  drawText("BILL TO", leftX, height - margin - 120, 12, true);
+  drawText(customerName, leftX, height - margin - 140, 12);
 
   // ========== ITEMS TABLE ==========
-  const tableTop = 580;
-  const tableLeft = 72;
-  const tableWidth = 468;
+  const tableTop = height - margin - 180;
+  const tableLeftX = leftX;
+  const tableWidth = pageWidth;
   const colWidths = [200, 80, 100, 88];
-  const colX = [tableLeft, tableLeft + colWidths[0], tableLeft + colWidths[0] + colWidths[1], tableLeft + colWidths[0] + colWidths[1] + colWidths[2]];
+  const colX = [
+    tableLeftX,
+    tableLeftX + colWidths[0],
+    tableLeftX + colWidths[0] + colWidths[1],
+    tableLeftX + colWidths[0] + colWidths[1] + colWidths[2],
+  ];
   const headers = ["Description", "Quantity", "Unit Price", "Amount"];
 
   // Table header background
-  fillRect(tableLeft, tableTop - 2, tableWidth, 20, 0.95, 0.95, 0.95);
+  fillRect(tableLeftX, tableTop - 2, tableWidth, 20, rgb(0.95, 0.95, 0.95));
 
   // Table header text
   headers.forEach((header, i) => {
-    addText(colX[i] + 4, tableTop, header, 10, true);
+    drawText(header, colX[i] + 4, tableTop, 10, true);
   });
 
   // Table header bottom line
-  drawLine(tableLeft, tableTop - 22, tableLeft + tableWidth, tableTop - 22);
+  drawLine(tableLeftX, tableTop - 22, tableLeftX + tableWidth, tableTop - 22);
 
   // Table row
   const rowY = tableTop - 24;
-  addText(colX[0] + 4, rowY, item, 10);
-  addText(colX[1] + 4, rowY, String(quantity), 10);
-  addText(colX[2] + 4, rowY, `₦${unitPrice.toLocaleString()}`, 10);
-  addText(colX[3] + 4, rowY, `₦${subtotal.toLocaleString()}`, 10);
+  drawText(item, colX[0] + 4, rowY, 10);
+  drawText(String(quantity), colX[1] + 4, rowY, 10);
+  drawText(`₦${unitPrice.toLocaleString()}`, colX[2] + 4, rowY, 10);
+  drawText(`₦${subtotal.toLocaleString()}`, colX[3] + 4, rowY, 10);
 
   // Table row bottom line
-  drawLine(tableLeft, rowY - 20, tableLeft + tableWidth, rowY - 20);
+  drawLine(tableLeftX, rowY - 20, tableLeftX + tableWidth, rowY - 20);
 
   // ========== TOTALS SECTION ==========
   const totalsY = rowY - 40;
-  const totalsX = 350;
+  const totalsX = rightX - 200;
   const totalsColX = [totalsX, totalsX + 100];
 
-  addText(totalsColX[0], totalsY, "Subtotal:", 10);
-  addText(totalsColX[1], totalsY, `₦${subtotal.toLocaleString()}`, 10);
+  drawText("Subtotal:", totalsColX[0], totalsY, 10);
+  drawText(`₦${subtotal.toLocaleString()}`, totalsColX[1], totalsY, 10);
 
-  addText(totalsColX[0], totalsY - 20, "Amount Paid:", 10);
-  addText(totalsColX[1], totalsY - 20, `₦${amountPaid.toLocaleString()}`, 10);
+  drawText("Amount Paid:", totalsColX[0], totalsY - 20, 10);
+  drawText(`₦${amountPaid.toLocaleString()}`, totalsColX[1], totalsY - 20, 10);
 
   // Balance due (prominent)
   const balanceY = totalsY - 50;
-  fillRect(totalsX - 10, balanceY - 4, 200, 28, 0.9, 0.9, 0.9);
+  fillRect(totalsX - 10, balanceY - 4, 200, 28, rgb(0.9, 0.9, 0.9));
 
-  addText(totalsColX[0], balanceY, "Balance Due:", 14, true);
-  addText(totalsColX[1], balanceY, `₦${balanceDue.toLocaleString()}`, 14, true);
+  drawText("Balance Due:", totalsColX[0], balanceY, 14, true);
+  drawText(`₦${balanceDue.toLocaleString()}`, totalsColX[1], balanceY, 14, true);
 
   // ========== FOOTER ==========
   const footerY = 120;
-  drawLine(72, footerY + 10, 540, footerY + 10);
+  drawLine(leftX, footerY + 10, rightX, footerY + 10);
 
-  addText(72, footerY - 10, "Thank you for your business!", 10);
-  addText(72, footerY - 30, "Payment is due within 30 days.", 9);
-  addText(72, footerY - 50, "Generated by MarketOS Offline", 8);
+  drawText("Thank you for your business!", leftX, footerY - 10, 10);
+  drawText("Payment is due within 30 days.", leftX, footerY - 30, 9);
+  drawText("Generated by MarketOS Offline", leftX, footerY - 50, 8);
 
-  const stream = lines.join("\n");
-
-  const objects = [
-    "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
-    `<< /Length ${Buffer.byteLength(
-      stream,
-    )} >>\nstream\n${stream}\nendstream`,
-  ];
-
-  let pdf = "%PDF-1.4\n";
-
-  const offsets = [0];
-
-  objects.forEach(
-    (object, index) => {
-      offsets.push(
-        Buffer.byteLength(pdf),
-      );
-
-      pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
-    },
-  );
-
-  const xrefOffset =
-    Buffer.byteLength(pdf);
-
-  pdf +=
-    `xref\n0 ${objects.length + 1}\n` +
-    "0000000000 65535 f \n";
-
-  for (
-    const offset of offsets.slice(1)
-  ) {
-    pdf += `${String(offset).padStart(
-      10,
-      "0",
-    )} 00000 n \n`;
-  }
-
-  return (
-    `${pdf}trailer\n` +
-    `<< /Size ${
-      objects.length + 1
-    } /Root 1 0 R >>\n` +
-    `startxref\n${xrefOffset}\n` +
-    "%%EOF"
-  );
+  // Serialize PDF
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
 
 async function readRawBody(
