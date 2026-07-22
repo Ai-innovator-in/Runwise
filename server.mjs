@@ -3309,7 +3309,8 @@ function send(
       ? "application/json"
       : "text/plain");
 
-  res.writeHead(status, {
+  // Build response headers
+  const responseHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers":
       "Content-Type, Authorization",
@@ -3317,8 +3318,14 @@ function send(
       "GET,POST,PUT,OPTIONS",
     "Content-Type": contentType,
     ...headers,
-  });
+  };
 
+  // Add Content-Length for binary payloads
+  if (Buffer.isBuffer(payload)) {
+    responseHeaders["Content-Length"] = payload.length;
+  }
+
+  res.writeHead(status, responseHeaders);
   res.end(body);
 }
 
