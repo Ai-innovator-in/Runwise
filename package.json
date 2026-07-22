@@ -47,7 +47,7 @@
     "@radix-ui/react-toggle": "1.1.2",
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
-    "better-sqlite3": "^11.0.0",
+    "better-sqlite3": "^11.10.0",
     "canvas-confetti": "1.9.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -78,10 +78,10 @@
   "devDependencies": {
     "@tailwindcss/vite": "4.1.12",
     "@vitejs/plugin-react": "4.7.0",
-    "tailwindcss": "4.1.12",
-    "vite": "^6.4.3",
     "electron": "^37.2.1",
-    "electron-builder": "^26.0.12"
+    "electron-builder": "^26.0.12",
+    "tailwindcss": "4.1.12",
+    "vite": "^6.4.3"
   },
   "build": {
     "appId": "com.marketos.offline",
@@ -97,12 +97,23 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "config", "to": "config" },
-      { "from": "tools", "to": "tools" },
-      { "from": "models", "to": "models" }
+      {
+        "from": "config",
+        "to": "config"
+      },
+      {
+        "from": "tools",
+        "to": "tools"
+      },
+      {
+        "from": "models",
+        "to": "models"
+      }
     ],
     "win": {
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "nsis": {
       "oneClick": false,
