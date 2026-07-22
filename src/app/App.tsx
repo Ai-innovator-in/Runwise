@@ -672,7 +672,32 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
               <div className="mt-4 flex gap-2">
                 <Btn
                   variant="secondary"
-                  onClick={() => window.open(`/api/invoices/${activeInvoice.id}/pdf`, "_blank")}
+                  onClick={async () => {
+                    try {
+                      const token = localStorage.getItem("marketos_token");
+                      const response = await fetch(`/api/invoices/${activeInvoice.id}/pdf`, {
+                        headers: {
+                          Authorization: `Bearer ${token}`,
+                        },
+                      });
+                      if (!response.ok) {
+                        const text = await response.text();
+                        const payload = text ? JSON.parse(text) : {};
+                        throw new Error(payload.error || "Failed to download PDF.");
+                      }
+                      const blob = await response.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = `${activeInvoice.number}.pdf`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    } catch (err) {
+                      alert(err instanceof Error ? err.message : "Download failed.");
+                    }
+                  }}
                   icon={<Download size={14} />}
                 >
                   Download PDF
