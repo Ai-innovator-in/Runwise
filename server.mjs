@@ -3157,24 +3157,24 @@ async function makeInvoicePdf(
   };
 
   // ========== HEADER ==========
-  // Left side: Business info
-  drawText(businessName, leftX, height - margin - 20, 24, true);
+  // Dark accent header background
+  fillRect(leftX, height - margin - 30, pageWidth, 60, rgb(0.1, 0.1, 0.1));
+
+  // Left side: Business info (white text)
+  drawText(businessName, leftX + 10, height - margin - 10, 20, true, rgb(1, 1, 1));
   if (location) {
-    drawText(location, leftX, height - margin - 46, 10);
+    drawText(location, leftX + 10, height - margin - 32, 10, false, rgb(0.8, 0.8, 0.8));
   }
 
-  // Right side: Invoice details
+  // Right side: Invoice details (white text)
   const invoiceRightX = rightX - 200;
-  drawText("INVOICE", invoiceRightX, height - margin - 20, 30, true);
-  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, height - margin - 52, 10);
-  drawText(`Date: ${invoiceDate}`, invoiceRightX, height - margin - 68, 10);
-  drawText(`Due Date: ${dueDate}`, invoiceRightX, height - margin - 84, 10);
-
-  // Separator line
-  drawLine(leftX, height - margin - 105, rightX, height - margin - 105);
+  drawText("INVOICE", invoiceRightX, height - margin - 10, 28, true, rgb(1, 1, 1));
+  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, height - margin - 38, 10, false, rgb(0.8, 0.8, 0.8));
+  drawText(`Date: ${invoiceDate}`, invoiceRightX, height - margin - 52, 10, false, rgb(0.8, 0.8, 0.8));
+  drawText(`Due Date: ${dueDate}`, invoiceRightX, height - margin - 66, 10, false, rgb(0.8, 0.8, 0.8));
 
   // ========== CUSTOMER CARD ==========
-  const customerCardTop = height - margin - 135;
+  const customerCardTop = height - margin - 110;
   const customerCardHeight = 50;
   // Draw card border
   page.drawRectangle({
@@ -3193,21 +3193,26 @@ async function makeInvoicePdf(
   const tableTop = customerCardTop - 30;
   const tableLeftX = leftX;
   const tableWidth = pageWidth;
-  const colWidths = [200, 80, 100, 88];
-  const colX = [
-    tableLeftX,
-    tableLeftX + colWidths[0],
-    tableLeftX + colWidths[0] + colWidths[1],
-    tableLeftX + colWidths[0] + colWidths[1] + colWidths[2],
+
+  // Fixed column positions (x, width)
+  const colDefs = [
+    { x: 60, width: 220 },   // Description
+    { x: 300, width: 50 },   // Quantity
+    { x: 360, width: 90 },   // Unit Price
+    { x: 460, width: 90 },   // Amount
   ];
+
   const headers = ["DESCRIPTION", "QTY", "UNIT PRICE", "AMOUNT"];
 
-  // Table header background
-  fillRect(tableLeftX, tableTop - 2, tableWidth, 22, rgb(0.95, 0.95, 0.95));
+  // Table header background (colored)
+  fillRect(tableLeftX, tableTop - 2, tableWidth, 22, rgb(0.1, 0.1, 0.1));
 
-  // Table header text
+  // Table header text (white)
   headers.forEach((header, i) => {
-    drawText(header, colX[i] + 6, tableTop, 10, true);
+    const col = colDefs[i];
+    // Right-align numeric columns (QTY, UNIT PRICE, AMOUNT)
+    const alignX = (i === 0) ? col.x + 6 : col.x + col.width - 6;
+    drawText(header, alignX, tableTop, 10, true, rgb(1, 1, 1));
   });
 
   // Table header bottom line
@@ -3215,10 +3220,24 @@ async function makeInvoicePdf(
 
   // Table row
   const rowY = tableTop - 26;
-  drawText(item, colX[0] + 6, rowY, 10);
-  drawText(String(quantity), colX[1] + 6, rowY, 10);
-  drawText(`₦${unitPrice.toLocaleString()}`, colX[2] + 6, rowY, 10);
-  drawText(`₦${subtotal.toLocaleString()}`, colX[3] + 6, rowY, 10);
+
+  // Description (left-aligned)
+  drawText(item, colDefs[0].x + 6, rowY, 10);
+
+  // Quantity (right-aligned)
+  const qtyText = String(quantity);
+  const qtyWidth = customFont.widthOfTextAtSize(qtyText, 10);
+  drawText(qtyText, colDefs[1].x + colDefs[1].width - qtyWidth - 6, rowY, 10);
+
+  // Unit Price (right-aligned)
+  const unitPriceText = `₦${unitPrice.toLocaleString()}`;
+  const unitPriceWidth = customFont.widthOfTextAtSize(unitPriceText, 10);
+  drawText(unitPriceText, colDefs[2].x + colDefs[2].width - unitPriceWidth - 6, rowY, 10);
+
+  // Amount (right-aligned)
+  const amountText = `₦${subtotal.toLocaleString()}`;
+  const amountWidth = customFont.widthOfTextAtSize(amountText, 10);
+  drawText(amountText, colDefs[3].x + colDefs[3].width - amountWidth - 6, rowY, 10);
 
   // Table row bottom line
   drawLine(tableLeftX, rowY - 22, tableLeftX + tableWidth, rowY - 22);
@@ -3238,20 +3257,29 @@ async function makeInvoicePdf(
   });
 
   const totalsX = rightX - 210;
-  const totalsColX = [totalsX, totalsX + 100];
+  const totalsLabelX = totalsX;
+  const totalsValueX = totalsX + 120;
 
-  drawText("Subtotal:", totalsColX[0], totalsCardTop + totalsCardHeight - 18, 10);
-  drawText(`₦${subtotal.toLocaleString()}`, totalsColX[1], totalsCardTop + totalsCardHeight - 18, 10);
+  // Subtotal
+  drawText("Subtotal:", totalsLabelX, totalsCardTop + totalsCardHeight - 18, 10);
+  const subtotalText = `₦${subtotal.toLocaleString()}`;
+  const subtotalWidth = customFont.widthOfTextAtSize(subtotalText, 10);
+  drawText(subtotalText, totalsValueX + (100 - subtotalWidth), totalsCardTop + totalsCardHeight - 18, 10);
 
-  drawText("Amount Paid:", totalsColX[0], totalsCardTop + totalsCardHeight - 38, 10);
-  drawText(`₦${amountPaid.toLocaleString()}`, totalsColX[1], totalsCardTop + totalsCardHeight - 38, 10);
+  // Amount Paid
+  drawText("Amount Paid:", totalsLabelX, totalsCardTop + totalsCardHeight - 38, 10);
+  const paidText = `₦${amountPaid.toLocaleString()}`;
+  const paidWidth = customFont.widthOfTextAtSize(paidText, 10);
+  drawText(paidText, totalsValueX + (100 - paidWidth), totalsCardTop + totalsCardHeight - 38, 10);
 
   // Balance due (prominent)
   const balanceY = totalsCardTop + totalsCardHeight - 62;
   fillRect(totalsX - 5, balanceY - 4, 210, 24, rgb(0.9, 0.9, 0.9));
 
-  drawText("BALANCE DUE:", totalsColX[0], balanceY, 14, true);
-  drawText(`₦${balanceDue.toLocaleString()}`, totalsColX[1], balanceY, 14, true);
+  drawText("BALANCE DUE:", totalsLabelX, balanceY, 14, true);
+  const balanceText = `₦${balanceDue.toLocaleString()}`;
+  const balanceWidth = customFont.widthOfTextAtSize(balanceText, 14);
+  drawText(balanceText, totalsValueX + (100 - balanceWidth), balanceY, 14, true);
 
   // ========== FOOTER ==========
   const footerY = 120;
