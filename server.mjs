@@ -3276,17 +3276,21 @@ function send(
       ? payload
       : JSON.stringify(payload);
 
+  // Determine Content-Type: use custom header if provided, otherwise default
+  const contentType =
+    headers["Content-Type"] ||
+    (typeof payload === "object" &&
+    !Buffer.isBuffer(payload)
+      ? "application/json"
+      : "text/plain");
+
   res.writeHead(status, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers":
       "Content-Type, Authorization",
     "Access-Control-Allow-Methods":
       "GET,POST,PUT,OPTIONS",
-    "Content-Type":
-      typeof payload === "object" &&
-      !Buffer.isBuffer(payload)
-        ? "application/json"
-        : "text/plain",
+    "Content-Type": contentType,
     ...headers,
   });
 
