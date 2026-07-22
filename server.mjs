@@ -3094,6 +3094,16 @@ async function makeInvoicePdf(
 
   // Load DejaVu Sans TTF font (supports Unicode including ₦)
   const fontPath = path.join(__dirname, "fonts", "DejaVuSans.ttf");
+  if (!existsSync(fontPath)) {
+    throw Object.assign(
+      new Error(
+        "Font file not found: fonts/DejaVuSans.ttf. " +
+        "Please download DejaVu Sans from https://github.com/dejavu-fonts/dejavu-fonts " +
+        "and place it in the fonts directory."
+      ),
+      { status: 500 },
+    );
+  }
   const fontBytes = readFileSync(fontPath);
   const customFont = await pdfDoc.embedFont(fontBytes);
 
