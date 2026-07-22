@@ -3158,32 +3158,39 @@ async function makeInvoicePdf(
 
   // ========== HEADER ==========
   // Left side: Business info
-  drawText(businessName, leftX, height - margin - 20, 22, true);
-  if (industry) {
-    drawText(industry, leftX, height - margin - 44, 10);
-  }
+  drawText(businessName, leftX, height - margin - 20, 24, true);
   if (location) {
-    drawText(location, leftX, height - margin - 60, 10);
+    drawText(location, leftX, height - margin - 46, 10);
   }
 
   // Right side: Invoice details
   const invoiceRightX = rightX - 200;
-  drawText("INVOICE", invoiceRightX, height - margin - 20, 28, true);
-  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, height - margin - 50, 10);
-  drawText(`Date: ${invoiceDate}`, invoiceRightX, height - margin - 66, 10);
-  drawText(`Due Date: ${dueDate}`, invoiceRightX, height - margin - 82, 10);
+  drawText("INVOICE", invoiceRightX, height - margin - 20, 30, true);
+  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, height - margin - 52, 10);
+  drawText(`Date: ${invoiceDate}`, invoiceRightX, height - margin - 68, 10);
+  drawText(`Due Date: ${dueDate}`, invoiceRightX, height - margin - 84, 10);
 
   // Separator line
   drawLine(leftX, height - margin - 105, rightX, height - margin - 105);
 
-  // ========== CUSTOMER SECTION ==========
-  // Customer card background
-  fillRect(leftX, height - margin - 130, pageWidth, 40, rgb(0.97, 0.97, 0.97));
-  drawText("BILL TO", leftX + 10, height - margin - 122, 10, true);
-  drawText(customerName, leftX + 10, height - margin - 140, 12);
+  // ========== CUSTOMER CARD ==========
+  const customerCardTop = height - margin - 135;
+  const customerCardHeight = 50;
+  // Draw card border
+  page.drawRectangle({
+    x: leftX,
+    y: customerCardTop,
+    width: pageWidth,
+    height: customerCardHeight,
+    borderColor: rgb(0.8, 0.8, 0.8),
+    borderWidth: 1,
+    color: rgb(0.98, 0.98, 0.98),
+  });
+  drawText("BILL TO", leftX + 10, customerCardTop + customerCardHeight - 16, 10, true);
+  drawText(customerName, leftX + 10, customerCardTop + customerCardHeight - 34, 12);
 
   // ========== ITEMS TABLE ==========
-  const tableTop = height - margin - 190;
+  const tableTop = customerCardTop - 30;
   const tableLeftX = leftX;
   const tableWidth = pageWidth;
   const colWidths = [200, 80, 100, 88];
@@ -3193,7 +3200,7 @@ async function makeInvoicePdf(
     tableLeftX + colWidths[0] + colWidths[1],
     tableLeftX + colWidths[0] + colWidths[1] + colWidths[2],
   ];
-  const headers = ["Description", "Quantity", "Unit Price", "Amount"];
+  const headers = ["DESCRIPTION", "QTY", "UNIT PRICE", "AMOUNT"];
 
   // Table header background
   fillRect(tableLeftX, tableTop - 2, tableWidth, 22, rgb(0.95, 0.95, 0.95));
@@ -3216,23 +3223,35 @@ async function makeInvoicePdf(
   // Table row bottom line
   drawLine(tableLeftX, rowY - 22, tableLeftX + tableWidth, rowY - 22);
 
-  // ========== TOTALS SECTION ==========
-  const totalsY = rowY - 50;
-  const totalsX = rightX - 220;
-  const totalsColX = [totalsX, totalsX + 120];
+  // ========== TOTAL SUMMARY CARD ==========
+  const totalsCardTop = rowY - 60;
+  const totalsCardHeight = 80;
+  // Draw card border
+  page.drawRectangle({
+    x: rightX - 220,
+    y: totalsCardTop,
+    width: 220,
+    height: totalsCardHeight,
+    borderColor: rgb(0.8, 0.8, 0.8),
+    borderWidth: 1,
+    color: rgb(0.98, 0.98, 0.98),
+  });
 
-  drawText("Subtotal:", totalsColX[0], totalsY, 10);
-  drawText(`₦${subtotal.toLocaleString()}`, totalsColX[1], totalsY, 10);
+  const totalsX = rightX - 210;
+  const totalsColX = [totalsX, totalsX + 100];
 
-  drawText("Amount Paid:", totalsColX[0], totalsY - 22, 10);
-  drawText(`₦${amountPaid.toLocaleString()}`, totalsColX[1], totalsY - 22, 10);
+  drawText("Subtotal:", totalsColX[0], totalsCardTop + totalsCardHeight - 18, 10);
+  drawText(`₦${subtotal.toLocaleString()}`, totalsColX[1], totalsCardTop + totalsCardHeight - 18, 10);
+
+  drawText("Amount Paid:", totalsColX[0], totalsCardTop + totalsCardHeight - 38, 10);
+  drawText(`₦${amountPaid.toLocaleString()}`, totalsColX[1], totalsCardTop + totalsCardHeight - 38, 10);
 
   // Balance due (prominent)
-  const balanceY = totalsY - 55;
-  fillRect(totalsX - 10, balanceY - 6, 220, 32, rgb(0.9, 0.9, 0.9));
+  const balanceY = totalsCardTop + totalsCardHeight - 62;
+  fillRect(totalsX - 5, balanceY - 4, 210, 24, rgb(0.9, 0.9, 0.9));
 
-  drawText("Balance Due:", totalsColX[0], balanceY, 16, true);
-  drawText(`₦${balanceDue.toLocaleString()}`, totalsColX[1], balanceY, 16, true);
+  drawText("BALANCE DUE:", totalsColX[0], balanceY, 14, true);
+  drawText(`₦${balanceDue.toLocaleString()}`, totalsColX[1], balanceY, 14, true);
 
   // ========== FOOTER ==========
   const footerY = 120;
