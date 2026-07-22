@@ -3962,13 +3962,23 @@ async function handleApi(req, res) {
     const invoiceId =
       url.pathname.split("/")[3];
 
+    const pdf = await makeInvoicePdf(
+      data,
+      invoiceId,
+    );
+
+    // Debug logging
+    console.log("=== PDF DEBUG ===");
+    console.log("typeof pdf:", typeof pdf);
+    console.log("pdf.length:", pdf.length);
+    console.log("pdf is Buffer:", Buffer.isBuffer(pdf));
+    console.log("First 20 bytes:", pdf.slice(0, 20).toString("utf8"));
+    console.log("=== END PDF DEBUG ===");
+
     return send(
       res,
       200,
-      makeInvoicePdf(
-        data,
-        invoiceId,
-      ),
+      pdf,
       {
         "Content-Type":
           "application/pdf",
