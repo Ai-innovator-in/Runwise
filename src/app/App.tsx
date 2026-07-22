@@ -563,18 +563,77 @@ function CustomersScreen({ data, refresh }: { data: AppData; refresh: (payload?:
 
 function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
   const [form, setForm] = useState({ customerName: "", dueDate: "", item: "", quantity: 1, unitPrice: 0, amountPaid: 0 });
-  const [savedInvoice, setSavedInvoice] = useState<Invoice | null>(data.invoices[0] || null);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(data.invoices[0] || null);
   const subtotal = form.quantity * form.unitPrice;
+
   const save = async () => {
     const response = await api<{ invoice: Invoice; data: AppData }>("/api/invoices", { method: "POST", body: JSON.stringify(form) });
-    setSavedInvoice(response.invoice);
+    setSelectedInvoice(response.invoice);
     refresh(response.data);
   };
+
+  const activeInvoice = selectedInvoice;
+
+  const invoiceTotal = activeInvoice
+    ? activeInvoice.quantity * activeInvoice.unitPrice
+    : 0;
+
+  const invoiceBalance = activeInvoice
+    ? invoiceTotal - activeInvoice.amountPaid
+    : 0;
+
   return (
     <div className="space-y-5">
       <Header title="Invoice Generator" subtitle="Invoices are saved by the backend and export as a PDF file." />
+
+      {/* Invoice History */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Invoice History</h2>
+        {data.invoices.length === 0 ? (
+          <p className="text-sm text-[#1a1c1b]/40">No invoices yet. Create one using the form below.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-[#f9f9f6] border-b border-[#1a1c1b]/5">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Invoice #</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Customer</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Date</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Amount</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[#1a1c1b]/40 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1a1c1b]/5">
+              {data.invoices.map((inv) => {
+                const total = inv.quantity * inv.unitPrice;
+                return (
+                  <tr
+                    key={inv.id}
+                    onClick={() => setSelectedInvoice(inv)}
+                    className={`cursor-pointer transition-colors ${
+                      activeInvoice?.id === inv.id
+                        ? "bg-[#005932]/5"
+                        : "hover:bg-[#f9f9f6]"
+                    }`}
+                  >
+                    <td className="px-4 py-2.5 font-mono text-[#1a1c1b]">{inv.number}</td>
+                    <td className="px-4 py-2.5 text-[#1a1c1b]">{inv.customerName}</td>
+                    <td className="px-4 py-2.5 text-[#1a1c1b]/60">{inv.date}</td>
+                    <td className="px-4 py-2.5 text-right font-mono text-[#1a1c1b]">{formatMoney(total)}</td>
+                    <td className="px-4 py-2.5">
+                      <Badge label={inv.status} variant={inv.status === "Saved" ? "saved" : "neutral"} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Invoice Form */}
       <div className="grid grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 space-y-3 shadow-sm">
+          <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">New Invoice</h2>
           {Object.entries(form).map(([key, value]) => (
             <Field key={key} label={key.replace(/([A-Z])/g, " $1")}>
               <input className={inputClass} type={typeof value === "number" ? "number" : key === "dueDate" ? "date" : "text"} value={value} onChange={(e) => setForm({ ...form, [key]: typeof value === "number" ? Number(e.target.value) : e.target.value })} />
@@ -582,22 +641,48 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
           ))}
           <div className="flex gap-2 pt-2">
             <Btn onClick={save}>Save Invoice</Btn>
-            <Btn variant="secondary" disabled={!savedInvoice} onClick={() => savedInvoice && window.open(`/api/invoices/${savedInvoice.id}/pdf`, "_blank")} icon={<Download size={14} />}>Export PDF</Btn>
           </div>
         </div>
+
+        {/* Invoice Preview */}
         <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 shadow-sm">
-          <div className="border-b border-[#1a1c1b]/5 pb-4 mb-4 flex justify-between">
-            <div><h2 className="text-lg font-bold text-[#1a1c1b]">{String(data.settings.businessName)}</h2><p className="text-xs text-[#1a1c1b]/40">{String(data.settings.location)}</p></div>
-            <div className="text-right"><p className="text-xs text-[#1a1c1b]/40 font-mono">{savedInvoice?.number || "Unsaved invoice"}</p><p className="text-xs text-[#795900]">Due: {form.dueDate}</p></div>
-          </div>
-          <p className="text-xs text-[#1a1c1b]/50 mb-1">Bill To</p>
-          <p className="font-semibold text-[#1a1c1b] mb-4">{form.customerName}</p>
-          <DataTable compact columns={["Item", "Qty", "Unit", "Total"]} rows={[[form.item, form.quantity, formatMoney(form.unitPrice), formatMoney(subtotal)]]} />
-          <div className="border-t border-[#1a1c1b]/5 pt-3 mt-3 space-y-1 text-sm">
-            <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatMoney(subtotal)}</span></div>
-            <div className="flex justify-between text-[#005932]"><span>Amount Paid</span><span className="font-mono">-{formatMoney(form.amountPaid)}</span></div>
-            <div className="flex justify-between font-bold text-[#1a1c1b] text-base pt-1 border-t border-[#1a1c1b]/10"><span>Balance Due</span><span className="font-mono text-red-600">{formatMoney(subtotal - form.amountPaid)}</span></div>
-          </div>
+          <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
+            {activeInvoice ? "Invoice Preview" : "Preview"}
+          </h2>
+          {activeInvoice ? (
+            <>
+              <div className="border-b border-[#1a1c1b]/5 pb-4 mb-4 flex justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-[#1a1c1b]">{String(data.settings.businessName)}</h2>
+                  <p className="text-xs text-[#1a1c1b]/40">{String(data.settings.location)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-[#1a1c1b]/40 font-mono">{activeInvoice.number}</p>
+                  <p className="text-xs text-[#795900]">Due: {activeInvoice.dueDate}</p>
+                </div>
+              </div>
+              <p className="text-xs text-[#1a1c1b]/50 mb-1">Bill To</p>
+              <p className="font-semibold text-[#1a1c1b] mb-4">{activeInvoice.customerName}</p>
+              <DataTable compact columns={["Item", "Qty", "Unit", "Total"]} rows={[[activeInvoice.item, activeInvoice.quantity, formatMoney(activeInvoice.unitPrice), formatMoney(invoiceTotal)]]} />
+              <div className="border-t border-[#1a1c1b]/5 pt-3 mt-3 space-y-1 text-sm">
+                <div className="flex justify-between"><span>Subtotal</span><span className="font-mono">{formatMoney(invoiceTotal)}</span></div>
+                <div className="flex justify-between text-[#005932]"><span>Amount Paid</span><span className="font-mono">-{formatMoney(activeInvoice.amountPaid)}</span></div>
+                <div className="flex justify-between font-bold text-[#1a1c1b] text-base pt-1 border-t border-[#1a1c1b]/10"><span>Balance Due</span><span className="font-mono text-red-600">{formatMoney(invoiceBalance)}</span></div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Btn
+                  variant="secondary"
+                  onClick={() => window.open(`/api/invoices/${activeInvoice.id}/pdf`, "_blank")}
+                  icon={<Download size={14} />}
+                >
+                  Download PDF
+                </Btn>
+                <Badge label={activeInvoice.status} variant={activeInvoice.status === "Saved" ? "saved" : "neutral"} />
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-[#1a1c1b]/40">Select an invoice from the history or create a new one.</p>
+          )}
         </div>
       </div>
     </div>
