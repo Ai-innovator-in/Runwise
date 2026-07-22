@@ -6,7 +6,8 @@ import { existsSync, createReadStream, readFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb } from "pdf-lib";
+import fontkit from "fontkit";
 import { initDatabase, closeDatabase, isDatabaseReady } from "./db/index.js";
 import { migrateFromJson, isMigrationNeeded } from "./db/migrate.js";
 
@@ -3087,8 +3088,22 @@ async function makeInvoicePdf(
 
   // Create PDF document
   const pdfDoc = await PDFDocument.create();
-  const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+  // Register fontkit for custom font embedding
+  pdfDoc.registerFontkit(fontkit);
+
+  // Load DejaVu Sans TTF font (supports Unicode including ₦)
+  const fontPath = path.join(__dirname, "fonts", "DejaVuSans.ttf");
+  const fontBytes = readFileSync(fontPath);
+  const customFont = await pdfDoc.embedFont(fontBytes);
+
+  // Also load bold variant if available, otherwise use same font
+  const boldFontPath = path.join(__dirname, "fonts", "DejaVuSans-Bold.ttf");
+  let customBoldFont = customFont;
+  if (existsSync(boldFontPath)) {
+    const boldFontBytes = readFileSync(boldFontPath);
+    customBoldFont = await pdfDoc.embedFont(boldFontBytes);
+  }
 
   const page = pdfDoc.addPage([612, 792]); // US Letter size
   const { width, height } = page.getSize();
@@ -3100,7 +3115,7 @@ async function makeInvoicePdf(
 
   // Helper to draw text
   const drawText = (text, x, y, size = 10, bold = false, color = rgb(0, 0, 0)) => {
-    const font = bold ? helveticaBoldFont : helveticaFont;
+    const font = bold ? customBoldFont : customFont;
     page.drawText(text, {
       x,
       y,
