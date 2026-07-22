@@ -3092,13 +3092,13 @@ async function makeInvoicePdf(
   // Register fontkit for custom font embedding
   pdfDoc.registerFontkit(fontkit);
 
-  // Load DejaVu Sans TTF font (supports Unicode including ₦)
-  const fontPath = path.join(__dirname, "fonts", "DejaVuSans.ttf");
+  // Load Noto Sans TTF font (supports Unicode including ₦)
+  const fontPath = path.join(__dirname, "fonts", "NotoSans-Regular.ttf");
   if (!existsSync(fontPath)) {
     throw Object.assign(
       new Error(
-        "Font file not found: fonts/DejaVuSans.ttf. " +
-        "Please download DejaVu Sans from https://github.com/dejavu-fonts/dejavu-fonts " +
+        "Font file not found: fonts/NotoSans-Regular.ttf. " +
+        "Please download Noto Sans from https://fonts.google.com/noto/specimen/Noto+Sans " +
         "and place it in the fonts directory."
       ),
       { status: 500 },
@@ -3108,7 +3108,7 @@ async function makeInvoicePdf(
   const customFont = await pdfDoc.embedFont(fontBytes);
 
   // Also load bold variant if available, otherwise use same font
-  const boldFontPath = path.join(__dirname, "fonts", "DejaVuSans-Bold.ttf");
+  const boldFontPath = path.join(__dirname, "fonts", "NotoSans-Bold.ttf");
   let customBoldFont = customFont;
   if (existsSync(boldFontPath)) {
     const boldFontBytes = readFileSync(boldFontPath);
