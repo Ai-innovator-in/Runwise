@@ -1073,7 +1073,18 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => P
       setError("");
       const response = await api<{ token: string; user: unknown }>(mode === "signup" ? "/api/auth/signup" : "/api/auth/signin", {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          businessName: form.businessName,
+          location: form.location,
+          industry: form.industry,
+          businessType: form.businessType,
+          targetCustomers: form.targetCustomers,
+          mainProducts: form.mainProducts,
+          primaryGoal: form.primaryGoal,
+        }),
       });
       localStorage.setItem("marketos_token", response.token);
       await onAuthenticated(response.token);
@@ -1104,6 +1115,56 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => P
               <Field label="Your Name"><input className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
               <Field label="Business Name"><input className={inputClass} value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })} /></Field>
               <Field label="Location"><input className={inputClass} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} /></Field>
+              <Field label="Industry">
+                <select className={inputClass} value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })}>
+                  <option value="">Select industry</option>
+                  <option value="Retail">Retail</option>
+                  <option value="Construction">Construction</option>
+                  <option value="Food">Food</option>
+                  <option value="Fashion">Fashion</option>
+                  <option value="Services">Services</option>
+                  <option value="Technology">Technology</option>
+                  <option value="Agriculture">Agriculture</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Business Type">
+                <select className={inputClass} value={form.businessType} onChange={(e) => setForm({ ...form, businessType: e.target.value })}>
+                  <option value="">Select business type</option>
+                  <option value="Retail">Retail</option>
+                  <option value="Wholesale">Wholesale</option>
+                  <option value="Manufacturing">Manufacturing</option>
+                  <option value="Service provider">Service provider</option>
+                  <option value="Online business">Online business</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+              </Field>
+              <Field label="Target Customers">
+                <select className={inputClass} value={form.targetCustomers} onChange={(e) => setForm({ ...form, targetCustomers: e.target.value })}>
+                  <option value="">Select target customers</option>
+                  <option value="Individuals">Individuals</option>
+                  <option value="Businesses">Businesses</option>
+                  <option value="Contractors">Contractors</option>
+                  <option value="Government">Government</option>
+                  <option value="Online customers">Online customers</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
+              <Field label="Main Products/Services">
+                <input className={inputClass} value={form.mainProducts} onChange={(e) => setForm({ ...form, mainProducts: e.target.value })} placeholder="e.g., Cement, roofing sheets, blocks, paint" />
+              </Field>
+              <Field label="Primary Business Goal">
+                <select className={inputClass} value={form.primaryGoal} onChange={(e) => setForm({ ...form, primaryGoal: e.target.value })}>
+                  <option value="">Select primary goal</option>
+                  <option value="Increase sales">Increase sales</option>
+                  <option value="Reduce costs">Reduce costs</option>
+                  <option value="Improve inventory">Improve inventory</option>
+                  <option value="Find more customers">Find more customers</option>
+                  <option value="Improve cash flow">Improve cash flow</option>
+                  <option value="Track performance">Track performance</option>
+                  <option value="Other">Other</option>
+                </select>
+              </Field>
             </>
           )}
           <Field label="Email"><input className={inputClass} type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>

@@ -181,7 +181,7 @@ const cleanProductName = (raw) => {
   return cleaned || text;
 };
 
-function emptyBusiness({ businessName, location }) {
+function emptyBusiness({ businessName, location, industry, businessType, targetCustomers, mainProducts, primaryGoal }) {
   return {
     settings: {
       businessName: businessName || "",
@@ -192,6 +192,11 @@ function emptyBusiness({ businessName, location }) {
       cloudSync: false,
       backupLocation: "Local disk",
       lastBackup: null,
+      industry: industry || "",
+      businessType: businessType || "",
+      targetCustomers: targetCustomers || "",
+      mainProducts: mainProducts || "",
+      primaryGoal: primaryGoal || "",
     },
     inventory: [],
     customers: [],
@@ -3294,6 +3299,11 @@ async function handleApi(req, res) {
         businessName:
           body.businessName,
         location: body.location,
+        industry: body.industry,
+        businessType: body.businessType,
+        targetCustomers: body.targetCustomers,
+        mainProducts: body.mainProducts,
+        primaryGoal: body.primaryGoal,
       }),
     };
 
