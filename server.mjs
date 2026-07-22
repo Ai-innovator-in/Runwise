@@ -3806,10 +3806,17 @@ async function handleApi(req, res) {
     req.method === "POST" &&
     url.pathname === "/api/coach"
   ) {
-    const coachStart = Date.now();
-    const result = await coachAnswer(data, body.question);
-    logTiming("coach total", coachStart);
-    return send(res, 200, result);
+    // Business Coach is temporarily disabled while we build the business core.
+    // The full AI-powered coach will be re-enabled in a future release.
+    return send(res, 200, {
+      answer: "Business Coach\n\nComing Soon\n\nMarketOS is building an AI assistant that understands your business and helps you make better decisions.\n\nFeatures coming:\n- Business improvement suggestions\n- Growth strategies\n- Operational insights\n- AI-powered recommendations",
+      actions: [],
+      confidence: "low",
+      diagnosis: "Business Coach is temporarily unavailable while we focus on core business features.",
+      recommendations: [],
+      nextSteps: [],
+      dataLimitations: ["Business Coach is being rebuilt for the new MarketOS platform."]
+    });
   }
 
   if (
