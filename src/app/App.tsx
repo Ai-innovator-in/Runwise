@@ -950,7 +950,29 @@ function PerformanceScreen({ data, refresh }: { data: AppData; refresh: (payload
 
 function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
   const [form, setForm] = useState(data.settings);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const save = async () => refresh(await api<AppData>("/api/settings", { method: "POST", body: JSON.stringify(form) }));
+
+  const deleteAccount = async () => {
+    try {
+      setDeleteLoading(true);
+      setDeleteError("");
+      await api("/api/auth/delete-account", {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      });
+      localStorage.removeItem("marketos_token");
+      window.location.reload();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete account.");
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <Header title="Settings" subtitle="Saved settings are persisted in the backend JSON database." />
@@ -959,6 +981,28 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
           <Field key={key} label={key.replace(/([A-Z])/g, " $1")}><input className={inputClass} value={String(form[key] ?? "")} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></Field>
         ))}
         <div className="col-span-2 flex gap-2"><Btn onClick={save}>Save Settings</Btn><Badge label="Offline Mode Active" variant="success" /><Badge label="Cloud Sync Disabled" variant="neutral" /></div>
+      </div>
+
+      {/* Account Deletion Section */}
+      <div className="bg-white rounded-xl border border-red-200 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-red-600 uppercase tracking-wider mb-2">Danger Zone</h2>
+        <p className="text-sm text-[#1a1c1b]/60 mb-3">Once you delete your account, there is no going back. Please be certain.</p>
+        {!deleteConfirm ? (
+          <Btn variant="danger" onClick={() => setDeleteConfirm(true)}>Delete Account</Btn>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-red-600 font-medium">Are you sure you want to permanently delete your account and all data?</p>
+            <div className="flex gap-2">
+              <Btn variant="danger" onClick={deleteAccount} disabled={deleteLoading}>
+                {deleteLoading ? "Deleting..." : "Yes, Delete My Account"}
+              </Btn>
+              <Btn variant="secondary" onClick={() => { setDeleteConfirm(false); setDeleteError(""); }}>
+                Cancel
+              </Btn>
+            </div>
+            {deleteError && <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{deleteError}</div>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1071,6 +1115,33 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => P
     try {
       setLoading(true);
       setError("");
+
+      // Frontend validation for required fields
+      if (mode === "signup") {
+        const requiredFields = [
+          { field: "name", label: "Name" },
+          { field: "businessName", label: "Business name" },
+          { field: "location", label: "Location" },
+          { field: "industry", label: "Industry" },
+          { field: "businessType", label: "Business type" },
+          { field: "mainProducts", label: "Main products/services" },
+        ];
+
+        for (const { field, label } of requiredFields) {
+          if (!String(form[field as keyof typeof form] || "").trim()) {
+            throw new Error(`${label} is required.`);
+          }
+        }
+      }
+
+      if (!String(form.email || "").trim()) {
+        throw new Error("Email is required.");
+      }
+
+      if (!String(form.password || "").trim()) {
+        throw new Error("Password is required.");
+      }
+
       const response = await api<{ token: string; user: unknown }>(mode === "signup" ? "/api/auth/signup" : "/api/auth/signin", {
         method: "POST",
         body: JSON.stringify({

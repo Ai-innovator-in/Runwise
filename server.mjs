@@ -3273,6 +3273,25 @@ async function handleApi(req, res) {
       );
     }
 
+    // Validate required fields
+    const requiredFields = [
+      { field: "name", label: "Name" },
+      { field: "businessName", label: "Business name" },
+      { field: "location", label: "Location" },
+      { field: "industry", label: "Industry" },
+      { field: "businessType", label: "Business type" },
+      { field: "mainProducts", label: "Main products/services" },
+    ];
+
+    for (const { field, label } of requiredFields) {
+      if (!String(body[field] || "").trim()) {
+        throw Object.assign(
+          new Error(`${label} is required.`),
+          { status: 400 },
+        );
+      }
+    }
+
     if (
       db.users.some(
         (user) =>
@@ -3399,6 +3418,41 @@ async function handleApi(req, res) {
 
     return send(res, 200, {
       ok: true,
+    });
+  }
+
+  if (
+    req.method === "POST" &&
+    url.pathname ===
+      "/api/auth/delete-account"
+  ) {
+    const user = requireUser(req, url, db);
+
+    if (!body.confirm) {
+      throw Object.assign(
+        new Error("Confirmation is required to delete your account."),
+        { status: 400 },
+      );
+    }
+
+    // Remove all sessions for this user
+    for (const [token, session] of Object.entries(db.sessions)) {
+      if (session.userId === user.id) {
+        delete db.sessions[token];
+      }
+    }
+
+    // Remove the user
+    const userIndex = db.users.findIndex((u) => u.id === user.id);
+    if (userIndex !== -1) {
+      db.users.splice(userIndex, 1);
+    }
+
+    await saveDb(db);
+
+    return send(res, 200, {
+      ok: true,
+      message: "Account deleted successfully.",
     });
   }
 
