@@ -6,6 +6,8 @@ import { existsSync, createReadStream, readFileSync } from "node:fs";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { initDatabase, closeDatabase, isDatabaseReady } from "./db/index.js";
+import { migrateFromJson, isMigrationNeeded } from "./db/migrate.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -4022,11 +4024,33 @@ const server = http.createServer(
 );
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  server.listen(PORT, () => {
-    console.log(
-      `MarketOS backend running on http://127.0.0.1:${PORT}`,
-    );
-  });
+  // Initialize SQLite database (non-blocking, JSON remains source of truth)
+  initDatabase()
+    .then(() => {
+      console.log('[DB] SQLite database initialized.');
+      // Check if migration is needed (controlled by env flag)
+      if (process.env.MARKETOS_MIGRATE === '1') {
+        return loadDb().then(async (db) => {
+          if (isMigrationNeeded(db)) {
+            console.log('[DB] Starting JSON to SQLite migration...');
+            await migrateFromJson(db);
+            console.log('[DB] Migration completed.');
+          } else {
+            console.log('[DB] No migration needed.');
+          }
+        });
+      }
+    })
+    .catch((err) => {
+      console.warn('[DB] SQLite initialization skipped:', err.message);
+    })
+    .finally(() => {
+      server.listen(PORT, () => {
+        console.log(
+          `MarketOS backend running on http://127.0.0.1:${PORT}`,
+        );
+      });
+    });
 }
 
 export {
@@ -4053,6 +4077,7 @@ export {
 async function shutdown() {
   console.log("Shutting down...");
   await manager.shutdown();
+  closeDatabase();
   server.close(() => {
     console.log("Server closed.");
     process.exit(0);
