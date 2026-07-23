@@ -15,10 +15,51 @@
           "language": "English",
           "offlineMode": true,
           "cloudSync": false,
-          "backupLocation": "Local disk",
+          "backupLocation": "",
           "lastBackup": null
         },
-        "inventory": [],
+        "inventory": [
+          {
+            "id": "prod_1784732921743_44ce7260",
+            "name": "Cement",
+            "stock": 93,
+            "costPrice": 5000,
+            "sellPrice": 6000,
+            "damaged": 0
+          },
+          {
+            "id": "prod_1784484903101_46ebe0be",
+            "name": "Iphone 15",
+            "stock": 8,
+            "costPrice": 500000,
+            "sellPrice": 510000,
+            "damaged": 2
+          },
+          {
+            "id": "prod_1784484856187_3c0230bb",
+            "name": "Iphone 14",
+            "stock": 22,
+            "costPrice": 400000,
+            "sellPrice": 450000,
+            "damaged": 0
+          },
+          {
+            "id": "prod_1784484823109_ddfc3b46",
+            "name": "Iphone 13",
+            "stock": 20,
+            "costPrice": 250000,
+            "sellPrice": 350000,
+            "damaged": 0
+          },
+          {
+            "id": "prod_1784484751362_4aaeed93",
+            "name": "Iphone 13 Pro",
+            "stock": 20,
+            "costPrice": 300000,
+            "sellPrice": 420000,
+            "damaged": 0
+          }
+        ],
         "customers": [
           {
             "id": "cust_1784100641287_eca0c18c",
@@ -61,6 +102,42 @@
           }
         ],
         "sales": [
+          {
+            "id": "sale_1784738058676_ebec31e6",
+            "date": "2026-07-22",
+            "product": "Cement",
+            "quantity": 2,
+            "unitPrice": 5000,
+            "channel": "Transfer",
+            "customer": "Alfred"
+          },
+          {
+            "id": "sale_1784733863999_9f842637",
+            "date": "2026-07-22",
+            "product": "Cement",
+            "quantity": 5,
+            "unitPrice": 5000,
+            "channel": "Cash",
+            "customer": "Temi"
+          },
+          {
+            "id": "sale_1784485500390_8bc98096",
+            "date": "2026-07-19",
+            "product": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "channel": "Cash",
+            "customer": ""
+          },
+          {
+            "id": "sale_1784485474530_f26dc137",
+            "date": "2026-07-19",
+            "product": "Cement",
+            "quantity": 50,
+            "unitPrice": 100,
+            "channel": "Cash",
+            "customer": "Musa"
+          },
           {
             "id": "sale_1784100660164_675ba72d",
             "date": "2026-07-15",
@@ -124,8 +201,69 @@
             "status": "Paid"
           }
         ],
-        "invoices": [],
+        "invoices": [
+          {
+            "id": "inv_1784757254933_b1c7f7e9",
+            "number": "INV-2026-0004",
+            "date": "2026-07-22",
+            "customerName": "",
+            "dueDate": "2026-07-23",
+            "item": "Sales",
+            "quantity": 1,
+            "unitPrice": 66998,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784753548939_ef14882b",
+            "number": "INV-2026-0003",
+            "date": "2026-07-22",
+            "customerName": "Daniel",
+            "dueDate": "2026-07-23",
+            "item": "Web design",
+            "quantity": 3,
+            "unitPrice": 3000000,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784497566802_ef6714e8",
+            "number": "INV-2026-0002",
+            "date": "2026-07-19",
+            "customerName": "",
+            "dueDate": "2026-07-20",
+            "item": "Saas",
+            "quantity": 1,
+            "unitPrice": 4553,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784483478405_2fe14f26",
+            "number": "INV-2026-0001",
+            "date": "2026-07-19",
+            "customerName": "Daniel",
+            "dueDate": "2026-07-20",
+            "item": "Design",
+            "quantity": 1,
+            "unitPrice": 300000,
+            "amountPaid": 149988,
+            "status": "Saved"
+          }
+        ],
         "notes": [
+          {
+            "id": "note_1784738058676_25d302f5",
+            "note": "I sold two bags of cement for 5000 each",
+            "createdAt": "2026-07-22T16:34:18.676Z",
+            "status": "Saved"
+          },
+          {
+            "id": "note_1784485474530_97fad376",
+            "note": "I sold 50 bags of cement to Musa for 5,000.",
+            "createdAt": "2026-07-19T18:24:34.530Z",
+            "status": "Saved"
+          },
           {
             "id": "note_1784100660164_fb5c2ae4",
             "note": "Sold 2 cartons of noodles at 5000 each. Musa took goods worth 3000 on credit. Paid transport 1500.",
@@ -157,7 +295,22 @@
             "status": "Saved"
           }
         ],
-        "knowledge": [],
+        "knowledge": [
+          {
+            "id": "knowledge_1784734010306_4f044851",
+            "title": "Contractos",
+            "source": "manual",
+            "body": "Business sells construction materials in Lagos.\nMain customers are contractors.",
+            "createdAt": "2026-07-22T15:26:50.306Z"
+          },
+          {
+            "id": "knowledge_1784490919835_2b4c9ffc",
+            "title": "Musa",
+            "source": "manual",
+            "body": "# Musa Building Supplies\n\n## Business Overview\n\nMusa Building Supplies is a small retail and wholesale business based in **Lagos, Nigeria**. The business sells cement, roofing sheets, blocks, paint, nails, binding wire, and other construction materials.\n\n## Target Customers\n\nOur main customers are:\n\n- Building contractors\n- Artisans\n- Property developers\n- Landlords\n- Individuals working on home renovation projects\n\n## Products and Services\n\n- Cement\n- Roofing sheets\n- Building blocks\n- Paint\n- Nails\n- Binding wire\n- Delivery of construction materials within Lagos\n\n## Sales Approach\n\nWe sell directly from our shop and also take orders by phone and WhatsApp. Repeat customers may receive discounts based on order size and payment history.\n\n## Delivery Policy\n\nWe offer paid delivery within Lagos. Delivery fees depend on distance, vehicle size, and the quantity of goods ordered.\n\n## Credit Policy\n\nCredit is only given to trusted repeat customers. Every credit sale must include:\n\n1. Customer name\n2. Amount owed\n3. Payment deadline\n4. Outstanding balance\n\n## Business Goals\n\n- Increase monthly cement sales\n- Attract more contractors and property developers\n- Reduce unpaid customer debt\n- Improve inventory planning\n- Promote roofing sheets and paint more effectively\n- Build stronger relationships with repeat customers\n\n## Important Business Rules\n\n- Do not record a sale as credit unless credit is explicitly agreed.\n- Do not record delivery or transport as an expense unless the business paid for it.\n- Large cement orders may qualify for a discount.\n- Low-stock products should be reordered before they run out.",
+            "createdAt": "2026-07-19T19:55:19.835Z"
+          }
+        ],
         "performance": {
           "runtime": "local",
           "model": null,
@@ -166,11 +319,11 @@
           "threads": null,
           "ramUsageGb": null,
           "peakRamGb": null,
-          "tokensPerSecond": null,
-          "extractionSeconds": null,
-          "ragSeconds": null,
+          "tokensPerSecond": 13.8,
+          "extractionSeconds": 1.5,
+          "ragSeconds": 5.8,
           "cpuTemperatureC": null,
-          "lastBenchmark": null
+          "lastBenchmark": "2026-07-21T15:26:24.262Z"
         }
       }
     }
@@ -187,6 +340,34 @@
     "3970d774b9f6ccfa00164d6e49630adb0fac097d8ac4f28b1d09859c3120ffbb": {
       "userId": "user_1783869975664_32bb6212",
       "createdAt": "2026-07-14T06:55:47.403Z"
+    },
+    "339564eb4fd47b665416d77035246279457dea821f49c7eced781c68b0170479": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-17T13:01:46.011Z"
+    },
+    "bb77230a11c004e422a474fdd14061b1daae3379621539d26c32ac12f8568a1f": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-19T17:18:09.700Z"
+    },
+    "c408a0679ed80a69c9ef78e98ed0064e889c491064ca078fcd8827863fb8a3fc": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-21T15:17:53.342Z"
+    },
+    "9da10107d11d23dbaa038deb78390314d6c5302a0ded5f15f29d6e2643bfccc0": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-22T20:33:06.601Z"
+    },
+    "22b46f05db9ddc503aa3d907b5512a3be769fababef8f6892bd0652daf696639": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-23T14:15:57.739Z"
+    },
+    "89e48252721ce0531ab1876c92fb3a9bd61a45d8f84dc112d6273fa0dddd4295": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-23T19:13:13.039Z"
+    },
+    "20374c65be1f668290740158c6eff7108d5034e541a92919f8c84ed3442ff151": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-23T19:54:49.997Z"
     }
   }
 }
