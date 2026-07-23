@@ -1776,12 +1776,12 @@ function AIPanel({ screen, data, onNavigate }: { screen: ScreenId; data: AppData
   const body = useMemo(() => {
     if (screen === "inventory") return `${data.summary.bestMarginProduct} has the strongest margin. ${data.summary.lowStockCount} item(s) need restocking.`;
     if (screen === "customers") return `${data.summary.customersOwing} customer(s) owe ${formatMoney(Number(data.summary.customerDebt))}.`;
-    if (screen === "performance") return `Backend benchmark is local. Last run: ${String(data.performance.lastBenchmark || "not yet run")}.`;
+    if (screen === "performance") return `Last benchmark run: ${String(data.performance.lastBenchmark || "not yet run")}.`;
     return `Today: ${formatMoney(Number(data.summary.salesTotal))} sales, ${formatMoney(Number(data.summary.expensesTotal))} expenses, ${formatMoney(Number(data.summary.cashReceived))} cash received.`;
   }, [data, screen]);
   return (
     <aside className="w-64 shrink-0 border-l border-[#1a1c1b]/8 bg-white flex flex-col">
-      <div className="px-4 py-3.5 border-b border-[#1a1c1b]/5 flex items-center gap-2"><Zap size={14} className="text-[#005932]" /><span className="text-xs font-semibold text-[#1a1c1b]">Backend Assistant</span><Badge label="Local" variant="local" /></div>
+      <div className="px-4 py-3.5 border-b border-[#1a1c1b]/5 flex items-center gap-2"><Zap size={14} className="text-[#005932]" /><span className="text-xs font-semibold text-[#1a1c1b]">Business Assistant</span></div>
       <div className="flex-1 px-4 py-4 space-y-4 overflow-y-auto">
         <div className="p-3.5 rounded-xl bg-[#005932]/5 border border-[#005932]/20"><p className="text-xs text-[#005932] leading-relaxed">{body}</p></div>
         <div className="space-y-2">
