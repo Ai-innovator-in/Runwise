@@ -3059,22 +3059,14 @@ async function makeInvoicePdf(
     );
   }
 
-  const total =
-    invoice.quantity *
-    invoice.unitPrice;
-
-  const balance =
-    total - invoice.amountPaid;
+  const total = invoice.quantity * invoice.unitPrice;
+  const balance = total - invoice.amountPaid;
 
   const clean = (value) =>
-    String(value).replace(
-      /[\\()]/g,
-      "",
-    );
+    String(value).replace(/[\\()]/g, "");
 
   const businessName = clean(data.settings.businessName || "Business Name");
   const location = clean(data.settings.location || "");
-  const industry = clean(data.settings.industry || "");
   const invoiceNumber = clean(invoice.number);
   const invoiceDate = clean(invoice.date);
   const dueDate = clean(invoice.dueDate);
@@ -3115,184 +3107,227 @@ async function makeInvoicePdf(
     customBoldFont = await pdfDoc.embedFont(boldFontBytes);
   }
 
-  const page = pdfDoc.addPage([612, 792]); // US Letter size
+  const page = pdfDoc.addPage([595.28, 841.89]); // A4 portrait
   const { width, height } = page.getSize();
 
-  const margin = 72; // 1 inch margins
-  const pageWidth = width - 2 * margin;
-  const leftX = margin;
-  const rightX = width - margin;
+  // ========== LAYOUT CONSTANTS ==========
+  const MARGIN = 56; // ~0.75 inch
+  const PAGE_WIDTH = width - 2 * MARGIN;
+  const LEFT_X = MARGIN;
+  const RIGHT_X = width - MARGIN;
 
-  // Helper to draw text
-  const drawText = (text, x, y, size = 10, bold = false, color = rgb(0, 0, 0)) => {
+  const SECTION_GAP = 20;
+  const CELL_PADDING = 6;
+  const ROW_HEIGHT = 24;
+  const HEADER_HEIGHT = 80;
+  const TOTAL_BOX_HEIGHT = 100;
+  const TOTAL_BOX_WIDTH = 240;
+
+  // Colors
+  const ACCENT_COLOR = rgb(0.1176, 0.2275, 0.5412); // #1E3A8A
+  const WHITE = rgb(1, 1, 1);
+  const BLACK = rgb(0, 0, 0);
+  const GRAY_LIGHT = rgb(0.95, 0.95, 0.95);
+  const GRAY_MEDIUM = rgb(0.8, 0.8, 0.8);
+  const GRAY_DARK = rgb(0.4, 0.4, 0.4);
+
+  // Helper functions
+  const drawText = (text, x, y, size = 10, bold = false, color = BLACK) => {
     const font = bold ? customBoldFont : customFont;
-    page.drawText(text, {
-      x,
-      y,
-      size,
-      font,
-      color,
-    });
+    page.drawText(text, { x, y, size, font, color });
   };
 
-  // Helper to draw a line
-  const drawLine = (x1, y1, x2, y2, color = rgb(0.8, 0.8, 0.8)) => {
+  const drawRect = (x, y, w, h, fillColor = null, borderColor = null, borderWidth = 0) => {
+    const options = { x, y, width: w, height: h };
+    if (fillColor) options.color = fillColor;
+    if (borderColor) {
+      options.borderColor = borderColor;
+      options.borderWidth = borderWidth || 1;
+    }
+    page.drawRectangle(options);
+  };
+
+  const drawLine = (x1, y1, x2, y2, color = GRAY_MEDIUM, thickness = 1) => {
     page.drawLine({
       start: { x: x1, y: y1 },
       end: { x: x2, y: y2 },
-      thickness: 1,
+      thickness,
       color,
     });
   };
 
-  // Helper to draw a filled rectangle
-  const fillRect = (x, y, w, h, color = rgb(0.95, 0.95, 0.95)) => {
-    page.drawRectangle({
-      x,
-      y,
-      width: w,
-      height: h,
-      color,
-    });
-  };
+  // ========== SEQUENTIAL LAYOUT ==========
+  let currentY = height - MARGIN; // Start from top margin
 
-  // ========== HEADER ==========
-  // Dark accent header background
-  fillRect(leftX, height - margin - 30, pageWidth, 60, rgb(0.1, 0.1, 0.1));
+  // ========== HEADER SECTION ==========
+  const headerTop = currentY;
+  const headerBottom = headerTop - HEADER_HEIGHT;
 
-  // Left side: Business info (white text)
-  drawText(businessName, leftX + 10, height - margin - 10, 20, true, rgb(1, 1, 1));
+  // Draw header background
+  drawRect(LEFT_X, headerBottom, PAGE_WIDTH, HEADER_HEIGHT, ACCENT_COLOR);
+
+  // Left side: Business info
+  drawText(businessName, LEFT_X + 16, headerTop - 24, 18, true, WHITE);
   if (location) {
-    drawText(location, leftX + 10, height - margin - 32, 10, false, rgb(0.8, 0.8, 0.8));
+    drawText(location, LEFT_X + 16, headerTop - 44, 10, false, rgb(0.8, 0.8, 0.8));
   }
 
-  // Right side: Invoice details (white text)
-  const invoiceRightX = rightX - 200;
-  drawText("INVOICE", invoiceRightX, height - margin - 10, 28, true, rgb(1, 1, 1));
-  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, height - margin - 38, 10, false, rgb(0.8, 0.8, 0.8));
-  drawText(`Date: ${invoiceDate}`, invoiceRightX, height - margin - 52, 10, false, rgb(0.8, 0.8, 0.8));
-  drawText(`Due Date: ${dueDate}`, invoiceRightX, height - margin - 66, 10, false, rgb(0.8, 0.8, 0.8));
+  // Right side: Invoice details
+  const invoiceRightX = RIGHT_X - 200;
+  drawText("INVOICE", invoiceRightX, headerTop - 24, 24, true, WHITE);
+  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, headerTop - 50, 10, false, rgb(0.8, 0.8, 0.8));
+  drawText(`Date: ${invoiceDate}`, invoiceRightX, headerTop - 64, 10, false, rgb(0.8, 0.8, 0.8));
+  drawText(`Due Date: ${dueDate}`, invoiceRightX, headerTop - 78, 10, false, rgb(0.8, 0.8, 0.8));
 
-  // ========== CUSTOMER CARD ==========
-  const customerCardTop = height - margin - 110;
-  const customerCardHeight = 50;
-  // Draw card border
-  page.drawRectangle({
-    x: leftX,
-    y: customerCardTop,
-    width: pageWidth,
-    height: customerCardHeight,
-    borderColor: rgb(0.8, 0.8, 0.8),
-    borderWidth: 1,
-    color: rgb(0.98, 0.98, 0.98),
-  });
-  drawText("BILL TO", leftX + 10, customerCardTop + customerCardHeight - 16, 10, true);
-  drawText(customerName, leftX + 10, customerCardTop + customerCardHeight - 34, 12);
+  currentY = headerBottom - SECTION_GAP;
+
+  // ========== CUSTOMER SECTION ==========
+  const customerCardHeight = 60;
+  const customerCardTop = currentY;
+  const customerCardBottom = customerCardTop - customerCardHeight;
+
+  // Left card: BILL TO
+  const leftCardWidth = (PAGE_WIDTH - SECTION_GAP) / 2;
+  drawRect(LEFT_X, customerCardBottom, leftCardWidth, customerCardHeight, null, GRAY_MEDIUM, 1);
+  drawText("BILL TO", LEFT_X + 12, customerCardTop - 16, 10, true, GRAY_DARK);
+  drawText(customerName, LEFT_X + 12, customerCardTop - 36, 12, false, BLACK);
+
+  // Right card: STATUS
+  const rightCardX = LEFT_X + leftCardWidth + SECTION_GAP;
+  const statusText = balanceDue > 0 ? "UNPAID" : "PAID";
+  const statusColor = balanceDue > 0 ? rgb(0.8, 0.2, 0.2) : rgb(0.2, 0.6, 0.2);
+  drawRect(rightCardX, customerCardBottom, leftCardWidth, customerCardHeight, null, GRAY_MEDIUM, 1);
+  drawText("STATUS", rightCardX + 12, customerCardTop - 16, 10, true, GRAY_DARK);
+  drawText(statusText, rightCardX + 12, customerCardTop - 36, 14, true, statusColor);
+
+  currentY = customerCardBottom - SECTION_GAP;
 
   // ========== ITEMS TABLE ==========
-  const tableTop = customerCardTop - 30;
-  const tableLeftX = leftX;
-  const tableWidth = pageWidth;
+  const tableTop = currentY;
+  const tableLeft = LEFT_X;
+  const tableWidth = PAGE_WIDTH;
 
-  // Fixed column positions (x, width)
+  // Column definitions
   const colDefs = [
-    { x: 60, width: 220 },   // Description
-    { x: 300, width: 50 },   // Quantity
-    { x: 360, width: 90 },   // Unit Price
-    { x: 460, width: 90 },   // Amount
+    { x: tableLeft, width: 240 },           // Description
+    { x: tableLeft + 240, width: 60 },      // Qty
+    { x: tableLeft + 300, width: 100 },     // Unit Price
+    { x: tableLeft + 400, width: tableWidth - 400 }, // Amount
   ];
 
   const headers = ["DESCRIPTION", "QTY", "UNIT PRICE", "AMOUNT"];
 
-  // Table header background (colored)
-  fillRect(tableLeftX, tableTop - 2, tableWidth, 22, rgb(0.1, 0.1, 0.1));
+  // Draw header row background
+  const headerRowTop = tableTop;
+  const headerRowBottom = headerRowTop - ROW_HEIGHT;
+  drawRect(tableLeft, headerRowBottom, tableWidth, ROW_HEIGHT, ACCENT_COLOR);
 
-  // Table header text (white)
+  // Draw header text
   headers.forEach((header, i) => {
     const col = colDefs[i];
-    // Right-align numeric columns (QTY, UNIT PRICE, AMOUNT)
-    const alignX = (i === 0) ? col.x + 6 : col.x + col.width - 6;
-    drawText(header, alignX, tableTop, 10, true, rgb(1, 1, 1));
+    let textX;
+    if (i === 0) {
+      // Left-aligned
+      textX = col.x + CELL_PADDING;
+    } else {
+      // Right-aligned
+      const textWidth = customFont.widthOfTextAtSize(header, 10);
+      textX = col.x + col.width - textWidth - CELL_PADDING;
+    }
+    drawText(header, textX, headerRowBottom + (ROW_HEIGHT - 10) / 2, 10, true, WHITE);
   });
 
-  // Table header bottom line
-  drawLine(tableLeftX, tableTop - 24, tableLeftX + tableWidth, tableTop - 24);
+  // Draw header cell borders
+  colDefs.forEach((col) => {
+    drawRect(col.x, headerRowBottom, col.width, ROW_HEIGHT, null, WHITE, 0.5);
+  });
 
-  // Table row
-  const rowY = tableTop - 26;
+  // Draw data row
+  const dataRowTop = headerRowBottom;
+  const dataRowBottom = dataRowTop - ROW_HEIGHT;
 
   // Description (left-aligned)
-  drawText(item, colDefs[0].x + 6, rowY, 10);
+  drawText(item, colDefs[0].x + CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
 
-  // Quantity (right-aligned)
+  // Quantity (centered)
   const qtyText = String(quantity);
   const qtyWidth = customFont.widthOfTextAtSize(qtyText, 10);
-  drawText(qtyText, colDefs[1].x + colDefs[1].width - qtyWidth - 6, rowY, 10);
+  const qtyCenterX = colDefs[1].x + colDefs[1].width / 2;
+  drawText(qtyText, qtyCenterX - qtyWidth / 2, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
 
   // Unit Price (right-aligned)
   const unitPriceText = `₦${unitPrice.toLocaleString()}`;
   const unitPriceWidth = customFont.widthOfTextAtSize(unitPriceText, 10);
-  drawText(unitPriceText, colDefs[2].x + colDefs[2].width - unitPriceWidth - 6, rowY, 10);
+  drawText(unitPriceText, colDefs[2].x + colDefs[2].width - unitPriceWidth - CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
 
   // Amount (right-aligned)
   const amountText = `₦${subtotal.toLocaleString()}`;
   const amountWidth = customFont.widthOfTextAtSize(amountText, 10);
-  drawText(amountText, colDefs[3].x + colDefs[3].width - amountWidth - 6, rowY, 10);
+  drawText(amountText, colDefs[3].x + colDefs[3].width - amountWidth - CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
 
-  // Table row bottom line
-  drawLine(tableLeftX, rowY - 22, tableLeftX + tableWidth, rowY - 22);
-
-  // ========== TOTAL SUMMARY CARD ==========
-  const totalsCardTop = rowY - 60;
-  const totalsCardHeight = 80;
-  // Draw card border
-  page.drawRectangle({
-    x: rightX - 220,
-    y: totalsCardTop,
-    width: 220,
-    height: totalsCardHeight,
-    borderColor: rgb(0.8, 0.8, 0.8),
-    borderWidth: 1,
-    color: rgb(0.98, 0.98, 0.98),
+  // Draw data row cell borders
+  colDefs.forEach((col) => {
+    drawRect(col.x, dataRowBottom, col.width, ROW_HEIGHT, null, GRAY_MEDIUM, 0.5);
   });
 
-  const totalsX = rightX - 210;
-  const totalsLabelX = totalsX;
-  const totalsValueX = totalsX + 120;
+  // Draw bottom border of table
+  drawLine(tableLeft, dataRowBottom, tableLeft + tableWidth, dataRowBottom, GRAY_MEDIUM, 1);
+
+  currentY = dataRowBottom - SECTION_GAP;
+
+  // ========== TOTALS SECTION ==========
+  const totalsCardTop = currentY;
+  const totalsCardBottom = totalsCardTop - TOTAL_BOX_HEIGHT;
+  const totalsCardLeft = RIGHT_X - TOTAL_BOX_WIDTH;
+
+  // Draw totals card background
+  drawRect(totalsCardLeft, totalsCardBottom, TOTAL_BOX_WIDTH, TOTAL_BOX_HEIGHT, null, GRAY_MEDIUM, 1);
 
   // Subtotal
-  drawText("Subtotal:", totalsLabelX, totalsCardTop + totalsCardHeight - 18, 10);
+  const subtotalY = totalsCardTop - 18;
+  drawText("Subtotal:", totalsCardLeft + 12, subtotalY, 10, false, BLACK);
   const subtotalText = `₦${subtotal.toLocaleString()}`;
-  const subtotalWidth = customFont.widthOfTextAtSize(subtotalText, 10);
-  drawText(subtotalText, totalsValueX + (100 - subtotalWidth), totalsCardTop + totalsCardHeight - 18, 10);
+  const subtotalTextWidth = customFont.widthOfTextAtSize(subtotalText, 10);
+  drawText(subtotalText, totalsCardLeft + TOTAL_BOX_WIDTH - subtotalTextWidth - 12, subtotalY, 10, false, BLACK);
 
   // Amount Paid
-  drawText("Amount Paid:", totalsLabelX, totalsCardTop + totalsCardHeight - 38, 10);
+  const paidY = totalsCardTop - 38;
+  drawText("Amount Paid:", totalsCardLeft + 12, paidY, 10, false, BLACK);
   const paidText = `₦${amountPaid.toLocaleString()}`;
-  const paidWidth = customFont.widthOfTextAtSize(paidText, 10);
-  drawText(paidText, totalsValueX + (100 - paidWidth), totalsCardTop + totalsCardHeight - 38, 10);
+  const paidTextWidth = customFont.widthOfTextAtSize(paidText, 10);
+  drawText(paidText, totalsCardLeft + TOTAL_BOX_WIDTH - paidTextWidth - 12, paidY, 10, false, BLACK);
 
-  // Balance due (prominent)
-  const balanceY = totalsCardTop + totalsCardHeight - 62;
-  fillRect(totalsX - 5, balanceY - 4, 210, 24, rgb(0.9, 0.9, 0.9));
+  // Balance Due (focal point)
+  const balanceY = totalsCardTop - 62;
+  const balanceBoxHeight = 28;
+  const balanceBoxTop = balanceY + 4;
+  const balanceBoxBottom = balanceBoxTop - balanceBoxHeight;
 
-  drawText("BALANCE DUE:", totalsLabelX, balanceY, 14, true);
+  // Draw accent background for balance due
+  drawRect(totalsCardLeft + 6, balanceBoxBottom, TOTAL_BOX_WIDTH - 12, balanceBoxHeight, ACCENT_COLOR);
+
+  // Balance Due label
+  drawText("BALANCE DUE:", totalsCardLeft + 16, balanceBoxBottom + (balanceBoxHeight - 14) / 2, 14, true, WHITE);
+
+  // Balance Due amount
   const balanceText = `₦${balanceDue.toLocaleString()}`;
-  const balanceWidth = customFont.widthOfTextAtSize(balanceText, 14);
-  drawText(balanceText, totalsValueX + (100 - balanceWidth), balanceY, 14, true);
+  const balanceTextWidth = customFont.widthOfTextAtSize(balanceText, 14);
+  drawText(balanceText, totalsCardLeft + TOTAL_BOX_WIDTH - balanceTextWidth - 16, balanceBoxBottom + (balanceBoxHeight - 14) / 2, 14, true, WHITE);
 
-  // ========== FOOTER ==========
-  const footerY = 120;
-  drawLine(leftX, footerY + 10, rightX, footerY + 10);
+  currentY = totalsCardBottom - SECTION_GAP;
 
-  drawText("Thank you for your business!", leftX, footerY - 10, 10);
+  // ========== FOOTER SECTION ==========
+  const footerTop = currentY;
 
-  // Show due date if available, otherwise no payment terms
+  // Draw separator line
+  drawLine(LEFT_X, footerTop, RIGHT_X, footerTop, GRAY_MEDIUM, 1);
+
+  // Footer text
+  drawText("Thank you for your business!", LEFT_X, footerTop - 16, 10, false, BLACK);
   if (dueDate) {
-    drawText(`Payment due by ${dueDate}`, leftX, footerY - 30, 9);
+    drawText(`Payment due by ${dueDate}`, LEFT_X, footerTop - 34, 9, false, GRAY_DARK);
   }
-
-  drawText("Generated by MarketOS", leftX, footerY - 50, 8);
+  drawText("Generated by MarketOS", LEFT_X, footerTop - 50, 8, false, GRAY_DARK);
 
   // Serialize PDF
   const pdfBytes = await pdfDoc.save();
