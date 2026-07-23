@@ -2011,8 +2011,11 @@ export default function App() {
   const [error, setError] = useState("");
 
   const refresh = async (payload?: AppData) => {
-    const next = payload || (await api<AppData>("/api/bootstrap"));
-    setData(next);
+    if (payload) {
+      setData(payload);
+    } else {
+      setData(await api<AppData>("/api/bootstrap"));
+    }
   };
 
   useEffect(() => {

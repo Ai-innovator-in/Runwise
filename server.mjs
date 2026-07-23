@@ -530,7 +530,7 @@ function bootstrap(user) {
   data.plan ??= "free";
   data.trialStartedAt ??= new Date().toISOString();
   data.trialEndsAt ??= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  data.invoiceCountThisMonth ??= 0;
+  data.invoiceCountThisMonth = Number(data.invoiceCountThisMonth) ?? 0;
   data.invoiceMonth ??= "";
 
   const recentActivity = [
@@ -4209,6 +4209,8 @@ async function handleApi(req, res) {
     };
 
     data.invoices.unshift(invoice);
+    // Defensive normalization to ensure counter is a number
+    data.invoiceCountThisMonth = Number(data.invoiceCountThisMonth) || 0;
     data.invoiceCountThisMonth += 1;
 
     await saveDb(db);
