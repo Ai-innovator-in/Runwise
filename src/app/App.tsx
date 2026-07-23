@@ -1757,16 +1757,6 @@ function Sidebar({ active, onNavigate }: { active: ScreenId; onNavigate: (screen
           </button>
         ))}
       </nav>
-      <div className="px-4 py-4 border-t border-white/[0.06]">
-        <div className="flex items-center gap-2 text-xs text-white/40">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#005932]" />
-          AI Ready
-        </div>
-        <div className="flex items-center gap-2 text-xs text-white/40 mt-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-          Backend API connected
-        </div>
-      </div>
     </aside>
   );
 }
