@@ -37,7 +37,6 @@ type ScreenId =
   | "reports"
   | "coach"
   | "knowledge"
-  | "performance"
   | "settings";
 
 type Product = { id: string; name: string; stock: number; costPrice: number; sellPrice: number; damaged: number };
@@ -76,7 +75,6 @@ type AppData = {
   expenses: Expense[];
   invoices: Invoice[];
   knowledge: Array<{ id: string; title: string; source: string; body: string }>;
-  performance: Record<string, string | number | null>;
   summary: Record<string, string | number | string[]>;
   recentActivity: Array<{ id: string; type: string; description: string; amount: number; date: string }>;
 };
@@ -92,7 +90,6 @@ const NAV_ITEMS: { id: ScreenId; label: string; icon: ReactNode }[] = [
   { id: "reports", label: "Reports", icon: <BarChart2 size={16} /> },
   { id: "coach", label: "Business Coach", icon: <Zap size={16} /> },
   { id: "knowledge", label: "Knowledge Base", icon: <BookOpen size={16} /> },
-  { id: "performance", label: "Performance", icon: <Cpu size={16} /> },
   { id: "settings", label: "Settings", icon: <Settings size={16} /> },
 ];
 
@@ -1632,25 +1629,6 @@ function KnowledgeScreen({ data, refresh }: { data: AppData; refresh: (payload?:
   );
 }
 
-function PerformanceScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
-  const run = async () => refresh(await api<AppData>("/api/performance/benchmark", { method: "POST", body: "{}" }));
-  const exportJson = () => {
-    const blob = new Blob([JSON.stringify(data.performance, null, 2)], { type: "application/json" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "marketos-benchmark.json";
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
-  const rows = Object.entries(data.performance).map(([key, value]) => [key, String(value ?? "Not run")]);
-  return (
-    <div className="space-y-5">
-      <Header title="Performance Dashboard" subtitle="Benchmark metrics are stored and updated by the backend." />
-      <div className="flex gap-2"><Btn onClick={run} icon={<Cpu size={14} />}>Run Local Benchmark</Btn><Btn variant="secondary" onClick={exportJson} icon={<Download size={14} />}>Export Benchmark Report</Btn></div>
-      <DataTable columns={["Metric", "Value"]} rows={rows} />
-    </div>
-  );
-}
 
 function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
   const [form, setForm] = useState(data.settings);
@@ -1780,7 +1758,6 @@ function AIPanel({ screen, data, onNavigate }: { screen: ScreenId; data: AppData
   const body = useMemo(() => {
     if (screen === "inventory") return `${data.summary.bestMarginProduct} has the strongest margin. ${data.summary.lowStockCount} item(s) need restocking.`;
     if (screen === "customers") return `${data.summary.customersOwing} customer(s) owe ${formatMoney(Number(data.summary.customerDebt))}.`;
-    if (screen === "performance") return `Last benchmark run: ${String(data.performance.lastBenchmark || "not yet run")}.`;
     return `Today: ${formatMoney(Number(data.summary.salesTotal))} sales, ${formatMoney(Number(data.summary.expensesTotal))} expenses, ${formatMoney(Number(data.summary.cashReceived))} cash received.`;
   }, [data, screen]);
   return (
@@ -2022,7 +1999,6 @@ export default function App() {
       case "reports": return <ReportsScreen data={data} />;
       case "coach": return <CoachScreen />;
       case "knowledge": return <KnowledgeScreen data={data} refresh={(payload) => run(() => refresh(payload), "Knowledge updated.")} />;
-      case "performance": return <PerformanceScreen data={data} refresh={(payload) => run(() => refresh(payload), "Benchmark updated.")} />;
       case "settings": return <SettingsScreen data={data} refresh={(payload) => run(() => refresh(payload), "Settings saved.")} />;
       default: return null;
     }

@@ -207,20 +207,6 @@ function emptyBusiness({ businessName, location, industry, businessType, targetC
     invoices: [],
     notes: [],
     knowledge: [],
-    performance: {
-      runtime: "local",
-      model: null,
-      quantization: null,
-      contextWindow: null,
-      threads: null,
-      ramUsageGb: null,
-      peakRamGb: null,
-      tokensPerSecond: null,
-      extractionSeconds: null,
-      ragSeconds: null,
-      cpuTemperatureC: null,
-      lastBenchmark: null,
-    },
   };
 }
 
@@ -4305,46 +4291,6 @@ async function handleApi(req, res) {
     );
   }
 
-  if (
-    req.method === "POST" &&
-    url.pathname ===
-      "/api/performance/benchmark"
-  ) {
-    data.performance.lastBenchmark =
-      new Date().toISOString();
-
-    data.performance.tokensPerSecond =
-      Number(
-        (
-          8 +
-          Math.random() * 8
-        ).toFixed(1),
-      );
-
-    data.performance.extractionSeconds =
-      Number(
-        (
-          1 +
-          Math.random() * 2
-        ).toFixed(1),
-      );
-
-    data.performance.ragSeconds =
-      Number(
-        (
-          2 +
-          Math.random() * 4
-        ).toFixed(1),
-      );
-
-    await saveDb(db);
-
-    return send(
-      res,
-      200,
-      bootstrap(user),
-    );
-  }
 
   return send(res, 404, {
     error: "API route not found.",
