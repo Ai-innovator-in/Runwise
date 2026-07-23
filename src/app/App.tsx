@@ -715,20 +715,426 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
 }
 
 function ReportsScreen({ data }: { data: AppData }) {
+  // ========== CALCULATIONS ==========
   const grossSales = data.sales.reduce((sum, sale) => sum + sale.quantity * sale.unitPrice, 0);
   const totalExpenses = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const net = grossSales - totalExpenses;
-  const debtRatio = grossSales ? (Number(data.summary.customerDebt) / grossSales) * 100 : 0;
+  const netProfit = grossSales - totalExpenses;
+  const customerDebt = data.customers.reduce((sum, c) => sum + c.debt, 0);
+  const inventoryValue = data.inventory.reduce((sum, p) => sum + p.stock * p.costPrice, 0);
+  const debtRatio = grossSales ? (customerDebt / grossSales) * 100 : 0;
+  const profitMargin = grossSales ? (netProfit / grossSales) * 100 : 0;
+  const expenseRatio = grossSales ? (totalExpenses / grossSales) * 100 : 0;
+
+  // Sales analytics
+  const totalSalesCount = data.sales.length;
+  const avgSaleValue = totalSalesCount ? grossSales / totalSalesCount : 0;
+  const highestSale = data.sales.length
+    ? Math.max(...data.sales.map((s) => s.quantity * s.unitPrice))
+    : 0;
+
+  // Top selling products (by revenue)
+  const productRevenueMap = new Map<string, { qty: number; revenue: number }>();
+  for (const sale of data.sales) {
+    const existing = productRevenueMap.get(sale.product) || { qty: 0, revenue: 0 };
+    existing.qty += sale.quantity;
+    existing.revenue += sale.quantity * sale.unitPrice;
+    productRevenueMap.set(sale.product, existing);
+  }
+  const topProducts = [...productRevenueMap.entries()]
+    .map(([product, stats]) => ({ product, ...stats }))
+    .sort((a, b) => b.revenue - a.revenue);
+
+  // Expense analytics
+  const totalExpenseCount = data.expenses.length;
+  const avgExpense = totalExpenseCount ? totalExpenses / totalExpenseCount : 0;
+  const largestExpense = data.expenses.length
+    ? Math.max(...data.expenses.map((e) => e.amount))
+    : 0;
+
+  // Expenses by category
+  const categoryMap = new Map<string, { count: number; total: number }>();
+  for (const expense of data.expenses) {
+    const existing = categoryMap.get(expense.category) || { count: 0, total: 0 };
+    existing.count += 1;
+    existing.total += expense.amount;
+    categoryMap.set(expense.category, existing);
+  }
+  const expensesByCategory = [...categoryMap.entries()]
+    .map(([category, stats]) => ({ category, ...stats }))
+    .sort((a, b) => b.total - a.total);
+
+  // Inventory analytics
+  const lowStockProducts = data.inventory.filter((p) => p.stock > 0 && p.stock <= 10);
+  const outOfStockProducts = data.inventory.filter((p) => p.stock === 0);
+  const productsNeedingAttention = [...lowStockProducts, ...outOfStockProducts].sort(
+    (a, b) => a.stock - b.stock
+  );
+
+  // Customer analytics
+  const customersWithDebt = data.customers.filter((c) => c.debt > 0);
+  const largestCustomerDebt = customersWithDebt.length
+    ? Math.max(...customersWithDebt.map((c) => c.debt))
+    : 0;
+  const sortedCustomersByDebt = [...data.customers].sort((a, b) => b.debt - a.debt);
+
+  // ========== RENDER ==========
   return (
-    <div className="space-y-5">
-      <Header title="Reports" subtitle="Every number is calculated from the backend ledger." />
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Gross Sales" value={formatMoney(grossSales)} />
-        <StatCard label="Expenses" value={formatMoney(totalExpenses)} color="text-red-600" />
-        <StatCard label="Estimated Net" value={formatMoney(net)} color="text-[#005932]" />
-        <StatCard label="Debt Ratio" value={`${debtRatio.toFixed(1)}%`} color="text-[#795900]" />
-      </div>
-      <DataTable columns={["Metric", "Value", "Source"]} rows={[["Gross Sales", formatMoney(grossSales), "Sales ledger"], ["Expenses", formatMoney(totalExpenses), "Expense ledger"], ["Customer Debt", formatMoney(Number(data.summary.customerDebt)), "Customer balances"], ["Inventory Value", formatMoney(Number(data.summary.inventoryValue)), "Inventory stock x cost"]]} />
+    <div className="space-y-8">
+      <Header
+        title="Reports & Analytics"
+        subtitle="Understand your business performance with data-driven insights."
+      />
+
+      {/* 1. Executive Overview */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
+          Executive Overview
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatCard label="Gross Sales" value={formatMoney(grossSales)} />
+          <StatCard label="Total Expenses" value={formatMoney(totalExpenses)} color="text-red-600" />
+          <StatCard
+            label="Estimated Net Profit"
+            value={formatMoney(netProfit)}
+            color={netProfit >= 0 ? "text-[#005932]" : "text-red-600"}
+          />
+          <StatCard label="Customer Debt" value={formatMoney(customerDebt)} color="text-[#795900]" />
+          <StatCard label="Inventory Value" value={formatMoney(inventoryValue)} />
+          <StatCard
+            label="Debt Ratio"
+            value={`${debtRatio.toFixed(1)}%`}
+            color={debtRatio > 30 ? "text-red-600" : "text-[#005932]"}
+          />
+        </div>
+      </section>
+
+      {/* 2. Sales Analytics */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
+          Sales Analytics
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <StatCard label="Total Sales" value={formatMoney(grossSales)} />
+          <StatCard label="Number of Sales" value={String(totalSalesCount)} />
+          <StatCard label="Average Sale" value={formatMoney(avgSaleValue)} />
+          <StatCard label="Highest Sale" value={formatMoney(highestSale)} />
+        </div>
+        {topProducts.length > 0 ? (
+          <div>
+            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
+              Top Selling Products
+            </h3>
+            <DataTable
+              columns={["Product", "Quantity Sold", "Revenue"]}
+              rows={topProducts.map((p) => [
+                p.product,
+                p.qty,
+                formatMoney(p.revenue),
+              ])}
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+            <p className="text-sm text-[#1a1c1b]/40">No sales records yet. Record your first sale to see analytics.</p>
+          </div>
+        )}
+      </section>
+
+      {/* 3. Expense Analytics */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
+          Expense Analytics
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <StatCard label="Total Expenses" value={formatMoney(totalExpenses)} color="text-red-600" />
+          <StatCard label="Number of Expenses" value={String(totalExpenseCount)} />
+          <StatCard label="Average Expense" value={formatMoney(avgExpense)} />
+          <StatCard label="Largest Expense" value={formatMoney(largestExpense)} color="text-red-600" />
+        </div>
+        {expensesByCategory.length > 0 ? (
+          <div>
+            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
+              Expenses by Category
+            </h3>
+            <DataTable
+              columns={["Category", "Transactions", "Total Amount"]}
+              rows={expensesByCategory.map((c) => [
+                c.category,
+                c.count,
+                formatMoney(c.total),
+              ])}
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+            <p className="text-sm text-[#1a1c1b]/40">No expense records yet. Record your first expense to see analytics.</p>
+          </div>
+        )}
+      </section>
+
+      {/* 4. Inventory Analytics */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
+          Inventory Analytics
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <StatCard label="Total Products" value={String(data.inventory.length)} />
+          <StatCard label="Inventory Value" value={formatMoney(inventoryValue)} />
+          <StatCard
+            label="Low Stock Products"
+            value={String(lowStockProducts.length)}
+            color={lowStockProducts.length > 0 ? "text-[#795900]" : "text-[#005932]"}
+          />
+          <StatCard
+            label="Out of Stock"
+            value={String(outOfStockProducts.length)}
+            color={outOfStockProducts.length > 0 ? "text-red-600" : "text-[#005932]"}
+          />
+        </div>
+        {productsNeedingAttention.length > 0 ? (
+          <div>
+            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
+              Products Needing Attention
+            </h3>
+            <DataTable
+              columns={["Product", "Stock", "Cost Price", "Sell Price", "Margin", "Status"]}
+              rows={productsNeedingAttention.map((p) => [
+                p.name,
+                p.stock,
+                formatMoney(p.costPrice),
+                formatMoney(p.sellPrice),
+                `${margin(p)}%`,
+                p.stock === 0 ? (
+                  <Badge label="Out of Stock" variant="danger" />
+                ) : (
+                  <Badge label="Low Stock" variant="warning" />
+                ),
+              ])}
+            />
+          </div>
+        ) : data.inventory.length > 0 ? (
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+            <p className="text-sm text-[#1a1c1b]/40">All products are well stocked.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+            <p className="text-sm text-[#1a1c1b]/40">No products in inventory yet. Add products to see analytics.</p>
+          </div>
+        )}
+      </section>
+
+      {/* 5. Customer Analytics */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
+          Customer Analytics
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <StatCard label="Total Customers" value={String(data.customers.length)} />
+          <StatCard
+            label="Customers With Debt"
+            value={String(customersWithDebt.length)}
+            color={customersWithDebt.length > 0 ? "text-[#795900]" : "text-[#005932]"}
+          />
+          <StatCard label="Total Customer Debt" value={formatMoney(customerDebt)} color="text-red-600" />
+          <StatCard label="Largest Debt" value={formatMoney(largestCustomerDebt)} color="text-[#795900]" />
+        </div>
+        {sortedCustomersByDebt.length > 0 ? (
+          <div>
+            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
+              Customer Debt Overview
+            </h3>
+            <DataTable
+              columns={["Customer", "Outstanding Balance", "Last Activity"]}
+              rows={sortedCustomersByDebt.map((c) => [
+                c.name,
+                formatMoney(c.debt),
+                c.lastActivity,
+              ])}
+            />
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+            <p className="text-sm text-[#1a1c1b]/40">No customers yet. Customer records will appear after you save a credit sale or add a customer.</p>
+          </div>
+        )}
+      </section>
+
+      {/* 6. Financial Health */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
+          Financial Health
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+            <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
+              Profit Margin
+            </p>
+            <p
+              className={`text-3xl font-semibold font-mono ${
+                profitMargin >= 0 ? "text-[#005932]" : "text-red-600"
+              }`}
+            >
+              {profitMargin.toFixed(1)}%
+            </p>
+            <p className="text-xs text-[#1a1c1b]/40 mt-1">
+              {profitMargin >= 20
+                ? "Healthy margin"
+                : profitMargin >= 10
+                  ? "Moderate margin"
+                  : profitMargin >= 0
+                    ? "Thin margin"
+                    : "Negative margin"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+            <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
+              Expense Ratio
+            </p>
+            <p
+              className={`text-3xl font-semibold font-mono ${
+                expenseRatio <= 50 ? "text-[#005932]" : "text-red-600"
+              }`}
+            >
+              {expenseRatio.toFixed(1)}%
+            </p>
+            <p className="text-xs text-[#1a1c1b]/40 mt-1">
+              {expenseRatio <= 30
+                ? "Low expenses"
+                : expenseRatio <= 50
+                  ? "Moderate expenses"
+                  : "High expenses"}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+            <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
+              Debt Ratio
+            </p>
+            <p
+              className={`text-3xl font-semibold font-mono ${
+                debtRatio <= 30 ? "text-[#005932]" : "text-red-600"
+              }`}
+            >
+              {debtRatio.toFixed(1)}%
+            </p>
+            <p className="text-xs text-[#1a1c1b]/40 mt-1">
+              {debtRatio <= 15
+                ? "Low debt exposure"
+                : debtRatio <= 30
+                  ? "Moderate debt"
+                  : "High debt exposure"}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. Export Reports */}
+      <section>
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
+          Export Reports
+        </h2>
+        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+          <p className="text-sm text-[#1a1c1b]/60 mb-4">
+            Download detailed reports for your records or to share with stakeholders.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Btn
+              variant="secondary"
+              onClick={() => {
+                const rows = [
+                  ["Metric", "Value"],
+                  ["Gross Sales", formatMoney(grossSales)],
+                  ["Total Sales Count", String(totalSalesCount)],
+                  ["Average Sale Value", formatMoney(avgSaleValue)],
+                  ["Highest Sale", formatMoney(highestSale)],
+                  ...topProducts.map((p) => [`Top Product: ${p.product}`, formatMoney(p.revenue)]),
+                ];
+                const csv = rows.map((r) => r.join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "sales-report.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              icon={<Download size={14} />}
+            >
+              Sales Report
+            </Btn>
+            <Btn
+              variant="secondary"
+              onClick={() => {
+                const rows = [
+                  ["Category", "Transactions", "Total Amount"],
+                  ...expensesByCategory.map((c) => [c.category, String(c.count), formatMoney(c.total)]),
+                ];
+                const csv = rows.map((r) => r.join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "expense-report.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              icon={<Download size={14} />}
+            >
+              Expense Report
+            </Btn>
+            <Btn
+              variant="secondary"
+              onClick={() => {
+                const rows = [
+                  ["Product", "Stock", "Cost Price", "Sell Price", "Margin"],
+                  ...data.inventory.map((p) => [
+                    p.name,
+                    String(p.stock),
+                    formatMoney(p.costPrice),
+                    formatMoney(p.sellPrice),
+                    `${margin(p)}%`,
+                  ]),
+                ];
+                const csv = rows.map((r) => r.join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "inventory-report.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              icon={<Download size={14} />}
+            >
+              Inventory Report
+            </Btn>
+            <Btn
+              variant="secondary"
+              onClick={() => {
+                const rows = [
+                  ["Customer", "Outstanding Balance", "Last Activity", "Status"],
+                  ...sortedCustomersByDebt.map((c) => [
+                    c.name,
+                    formatMoney(c.debt),
+                    c.lastActivity,
+                    c.status,
+                  ]),
+                ];
+                const csv = rows.map((r) => r.join(",")).join("\n");
+                const blob = new Blob([csv], { type: "text/csv" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "customer-debt-report.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+              icon={<Download size={14} />}
+            >
+              Customer Debt Report
+            </Btn>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
