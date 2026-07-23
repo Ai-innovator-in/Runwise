@@ -185,6 +185,9 @@ const cleanProductName = (raw) => {
 
 function emptyBusiness({ businessName, location, industry, businessType, targetCustomers, mainProducts, primaryGoal }) {
   return {
+    plan: "free",
+    invoiceCountThisMonth: 0,
+    invoiceMonth: "",
     settings: {
       businessName: businessName || "",
       location: location || "",
@@ -545,6 +548,9 @@ function bootstrap(user) {
 
   return {
     user: publicUser(user),
+    plan: data.plan,
+    invoiceCountThisMonth: data.invoiceCountThisMonth,
+    invoiceMonth: data.invoiceMonth,
     ...data,
     summary: summary(data),
     recentActivity,
@@ -4133,6 +4139,23 @@ async function handleApi(req, res) {
     url.pathname ===
       "/api/invoices"
   ) {
+    // Monthly invoice tracking
+    const currentMonth = TODAY.slice(0, 7); // "YYYY-MM"
+    if (data.invoiceMonth !== currentMonth) {
+      data.invoiceMonth = currentMonth;
+      data.invoiceCountThisMonth = 0;
+    }
+
+    // Free plan limit check
+    if (data.plan === "free" && data.invoiceCountThisMonth >= 15) {
+      throw Object.assign(
+        new Error(
+          "Free plan monthly invoice limit reached (15 invoices). Upgrade to Pro for unlimited invoices."
+        ),
+        { status: 403 },
+      );
+    }
+
     const invoice = {
       id: id("inv"),
       number:
@@ -4160,6 +4183,7 @@ async function handleApi(req, res) {
     };
 
     data.invoices.unshift(invoice);
+    data.invoiceCountThisMonth += 1;
 
     await saveDb(db);
 

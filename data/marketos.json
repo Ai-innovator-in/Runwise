@@ -8,6 +8,9 @@
       "passwordHash": "f9d37105d14f7bc814d7917ecd8737f6:3d9a196197587a212bc3f89fa97796a66ab1190f4a36a9183eeda645bd2ade36",
       "createdAt": "2026-07-12T15:26:15.902Z",
       "data": {
+        "plan": "free",
+        "invoiceCountThisMonth": 0,
+        "invoiceMonth": "",
         "settings": {
           "businessName": "Ed3hub",
           "location": "Lagos",

@@ -68,6 +68,9 @@ type Draft = {
 };
 type AppData = {
   user: { id: string; name: string; email: string; businessName: string; location: string };
+  plan: string;
+  invoiceCountThisMonth: number;
+  invoiceMonth: string;
   settings: Record<string, string | boolean>;
   inventory: Product[];
   customers: Customer[];
