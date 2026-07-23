@@ -68,7 +68,7 @@ type Draft = {
 };
 type AppData = {
   user: { id: string; name: string; email: string; businessName: string; location: string };
-  plan: string;
+  plan: "free" | "pro";
   invoiceCountThisMonth: number;
   invoiceMonth: string;
   settings: Record<string, string | boolean>;
@@ -560,12 +560,25 @@ function CustomersScreen({ data, refresh }: { data: AppData; refresh: (payload?:
 function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
   const [form, setForm] = useState({ customerName: "", dueDate: "", item: "", quantity: 1, unitPrice: 0, amountPaid: 0 });
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(data.invoices[0] || null);
+  const [saveError, setSaveError] = useState("");
   const subtotal = form.quantity * form.unitPrice;
 
+  const isFreePlan = data.plan === "free";
+  const invoiceLimit = 15;
+  const invoicesUsed = data.invoiceCountThisMonth;
+  const invoicesRemaining = Math.max(0, invoiceLimit - invoicesUsed);
+  const limitReached = isFreePlan && invoicesUsed >= invoiceLimit;
+
   const save = async () => {
-    const response = await api<{ invoice: Invoice; data: AppData }>("/api/invoices", { method: "POST", body: JSON.stringify(form) });
-    setSelectedInvoice(response.invoice);
-    refresh(response.data);
+    try {
+      setSaveError("");
+      const response = await api<{ invoice: Invoice; data: AppData }>("/api/invoices", { method: "POST", body: JSON.stringify(form) });
+      setSelectedInvoice(response.invoice);
+      refresh(response.data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save invoice.";
+      setSaveError(message);
+    }
   };
 
   const activeInvoice = selectedInvoice;
@@ -581,6 +594,41 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   return (
     <div className="space-y-5">
       <Header title="Invoice Generator" subtitle="Invoices are saved by the backend and export as a PDF file." />
+
+      {/* Invoice Usage Display */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Invoices this month</p>
+            {isFreePlan ? (
+              <div>
+                <p className="text-lg font-semibold text-[#1a1c1b]">
+                  {invoicesUsed} / {invoiceLimit} used
+                </p>
+                <p className="text-sm text-[#1a1c1b]/60 mt-0.5">
+                  {invoicesRemaining} invoice{invoicesRemaining !== 1 ? "s" : ""} remaining
+                </p>
+              </div>
+            ) : (
+              <p className="text-lg font-semibold text-[#005932]">Unlimited</p>
+            )}
+          </div>
+          {limitReached && (
+            <div className="text-right">
+              <p className="text-sm text-red-600 font-medium mb-1">
+                You've reached your monthly limit of {invoiceLimit} invoices.
+              </p>
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border bg-[#005932] text-white border-transparent hover:bg-[#004d2a] shadow-sm opacity-50 cursor-not-allowed"
+                disabled
+              >
+                Upgrade to Pro
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Invoice History */}
       <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
@@ -635,8 +683,15 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
               <input className={inputClass} type={typeof value === "number" ? "number" : key === "dueDate" ? "date" : "text"} value={value} onChange={(e) => setForm({ ...form, [key]: typeof value === "number" ? Number(e.target.value) : e.target.value })} />
             </Field>
           ))}
+          {saveError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              {saveError}
+            </div>
+          )}
           <div className="flex gap-2 pt-2">
-            <Btn onClick={save}>Save Invoice</Btn>
+            <Btn onClick={save} disabled={limitReached}>
+              {limitReached ? "Limit Reached" : "Save Invoice"}
+            </Btn>
           </div>
         </div>
 

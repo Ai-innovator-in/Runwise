@@ -510,6 +510,11 @@ function summary(data) {
 function bootstrap(user) {
   const data = user.data;
 
+  // Ensure plan fields exist for backward compatibility
+  data.plan ??= "free";
+  data.invoiceCountThisMonth ??= 0;
+  data.invoiceMonth ??= "";
+
   const recentActivity = [
     ...data.sales.map((sale) => ({
       id: sale.id,
