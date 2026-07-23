@@ -731,6 +731,8 @@ import {
 } from "recharts";
 
 function ReportsScreen({ data }: { data: AppData }) {
+  const [selectedReport, setSelectedReport] = useState<string>("overview");
+
   // ========== CALCULATIONS ==========
   const grossSales = data.sales.reduce((sum, sale) => sum + sale.quantity * sale.unitPrice, 0);
   const totalExpenses = data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
@@ -835,478 +837,488 @@ function ReportsScreen({ data }: { data: AppData }) {
   // Top debt customers for chart
   const topDebtCustomers = sortedCustomersByDebt.slice(0, 10);
 
-  // Chart colors
-  const CHART_COLORS = ["#005932", "#795900", "#dc2626", "#2563eb", "#7c3aed", "#0891b2", "#d97706", "#059669", "#9333ea", "#0d9488"];
+  // Chart colors  const CHART_COLORS = ["#005932", "#795900", "#dc2626", "#2563eb", "#7c3aed", "#0891b2", "#d97706", "#059669", "#9333ea", "#0d9488"];
 
   // Custom tooltip formatter
   const currencyFormatter = (value: number) => formatMoney(value);
 
-  // ========== RENDER ==========
+  const reportOptions = [
+    { value: "overview", label: "Business Overview" },
+    { value: "sales", label: "Sales Analytics" },
+    { value: "expenses", label: "Expense Analytics" },
+    { value: "inventory", label: "Inventory Analytics" },
+    { value: "customers", label: "Customer Analytics" },
+    { value: "health", label: "Financial Health" },
+    { value: "exports", label: "Export Reports" },
+  ];
+
   return (
-    <div className="space-y-8">
-      <Header
-        title="Reports & Analytics"
-        subtitle="Understand your business performance with data-driven insights."
-      />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Header
+          title="Reports & Analytics"
+          subtitle="Select a report to view detailed insights."
+        />
+        <select
+          className={inputClass + " w-56"}
+          value={selectedReport}
+          onChange={(e) => setSelectedReport(e.target.value)}
+        >
+          {reportOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {/* 1. Executive Overview */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
-          Executive Overview
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Gross Sales" value={formatMoney(grossSales)} />
-          <StatCard
-            label="Estimated Net Profit"
-            value={formatMoney(netProfit)}
-            color={netProfit >= 0 ? "text-[#005932]" : "text-red-600"}
-          />
-          <StatCard label="Customer Debt" value={formatMoney(customerDebt)} color="text-[#795900]" />
-          <StatCard label="Inventory Value" value={formatMoney(inventoryValue)} />
-        </div>
-      </section>
-
-      {/* 2. Sales Analytics */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
-          Sales Analytics
-        </h2>
-        <div className="flex flex-wrap gap-4 mb-4 text-sm text-[#1a1c1b]/70">
-          <span><strong className="text-[#1a1c1b]">{totalSalesCount}</strong> sales</span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span>Avg <strong className="text-[#1a1c1b]">{formatMoney(avgSaleValue)}</strong></span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span>Highest <strong className="text-[#1a1c1b]">{formatMoney(highestSale)}</strong></span>
-        </div>
-
-        {salesOverTime.length > 0 ? (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm mb-4">
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
-              Sales Over Time
-            </h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={salesOverTime}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                <Tooltip formatter={currencyFormatter} />
-                <Line type="monotone" dataKey="revenue" stroke="#005932" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm mb-4">
-            <p className="text-sm text-[#1a1c1b]/40">No sales records yet. Record your first sale to see analytics.</p>
-          </div>
-        )}
-
-        {top5Products.length > 0 ? (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm mb-4">
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
-              Top Products by Revenue
-            </h3>
-            <ResponsiveContainer width="100%" height={Math.max(200, top5Products.length * 50)}>
-              <BarChart data={top5Products} layout="vertical" margin={{ left: 100 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis type="number" tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                <YAxis dataKey="product" type="category" tick={{ fontSize: 11 }} stroke="#9ca3af" width={90} />
-                <Tooltip formatter={currencyFormatter} />
-                <Bar dataKey="revenue" fill="#005932" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : null}
-
-        {topProducts.length > 0 ? (
-          <div>
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
-              All Products
-            </h3>
-            <DataTable
-              columns={["Product", "Quantity Sold", "Revenue"]}
-              rows={topProducts.map((p) => [
-                p.product,
-                p.qty,
-                formatMoney(p.revenue),
-              ])}
+      {/* ========== BUSINESS OVERVIEW ========== */}
+      {selectedReport === "overview" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Gross Sales" value={formatMoney(grossSales)} />
+            <StatCard
+              label="Estimated Net Profit"
+              value={formatMoney(netProfit)}
+              color={netProfit >= 0 ? "text-[#005932]" : "text-red-600"}
             />
+            <StatCard label="Customer Debt" value={formatMoney(customerDebt)} color="text-[#795900]" />
+            <StatCard label="Inventory Value" value={formatMoney(inventoryValue)} />
           </div>
-        ) : null}
-      </section>
 
-      {/* 3. Expense Analytics */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
-          Expense Analytics
-        </h2>
-        <div className="flex flex-wrap gap-4 mb-4 text-sm text-[#1a1c1b]/70">
-          <span>Total <strong className="text-[#1a1c1b]">{formatMoney(totalExpenses)}</strong></span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span><strong className="text-[#1a1c1b]">{totalExpenseCount}</strong> expenses</span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span>Avg <strong className="text-[#1a1c1b]">{formatMoney(avgExpense)}</strong></span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span>Largest <strong className="text-[#1a1c1b]">{formatMoney(largestExpense)}</strong></span>
-        </div>
-
-        {expensesByCategory.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {salesOverTime.length > 0 ? (
             <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
               <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
-                Expenses by Category
+                Sales Over Time
               </h3>
               <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={expensesByCategory}
-                    dataKey="total"
-                    nameKey="category"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {expensesByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
+                <LineChart data={salesOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
                   <Tooltip formatter={currencyFormatter} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            {expensesOverTime.length > 0 ? (
-              <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-                <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
-                  Expenses Over Time
-                </h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={expensesOverTime}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                    <Tooltip formatter={currencyFormatter} />
-                    <Bar dataKey="amount" fill="#dc2626" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            ) : null}
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm mb-4">
-            <p className="text-sm text-[#1a1c1b]/40">No expense records yet. Record your first expense to see analytics.</p>
-          </div>
-        )}
-
-        {expensesByCategory.length > 0 ? (
-          <div>
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
-              Expenses by Category (Detailed)
-            </h3>
-            <DataTable
-              columns={["Category", "Transactions", "Total Amount"]}
-              rows={expensesByCategory.map((c) => [
-                c.category,
-                c.count,
-                formatMoney(c.total),
-              ])}
-            />
-          </div>
-        ) : null}
-      </section>
-
-      {/* 4. Inventory Analytics */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
-          Inventory Analytics
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          {stockStatusData.length > 0 ? (
-            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
-                Stock Status
-              </h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={stockStatusData}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {stockStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
+                  <Line type="monotone" dataKey="revenue" stroke="#005932" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
             <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
-              <p className="text-sm text-[#1a1c1b]/40">No products in inventory yet.</p>
+              <p className="text-sm text-[#1a1c1b]/40">No sales records yet. Record your first sale to see analytics.</p>
             </div>
           )}
-          {inventoryByValue.length > 0 ? (
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
-                Highest Value Products
-              </h3>
-              <ResponsiveContainer width="100%" height={Math.max(200, inventoryByValue.length * 40)}>
-                <BarChart data={inventoryByValue} layout="vertical" margin={{ left: 100 }}>
+              <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Profit Margin</p>
+              <p className={`text-2xl font-semibold font-mono ${profitMargin >= 0 ? "text-[#005932]" : "text-red-600"}`}>
+                {profitMargin.toFixed(1)}%
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Expense Ratio</p>
+              <p className={`text-2xl font-semibold font-mono ${expenseRatio <= 50 ? "text-[#005932]" : "text-red-600"}`}>
+                {expenseRatio.toFixed(1)}%
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Debt Ratio</p>
+              <p className={`text-2xl font-semibold font-mono ${debtRatio <= 30 ? "text-[#005932]" : "text-red-600"}`}>
+                {debtRatio.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========== SALES ANALYTICS ========== */}
+      {selectedReport === "sales" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-4 text-sm text-[#1a1c1b]/70">
+            <span><strong className="text-[#1a1c1b]">{totalSalesCount}</strong> sales</span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span>Avg <strong className="text-[#1a1c1b]">{formatMoney(avgSaleValue)}</strong></span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span>Highest <strong className="text-[#1a1c1b]">{formatMoney(highestSale)}</strong></span>
+          </div>
+
+          {salesOverTime.length > 0 ? (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Sales Over Time</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={salesOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                  <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                  <Tooltip formatter={currencyFormatter} />
+                  <Line type="monotone" dataKey="revenue" stroke="#005932" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+              <p className="text-sm text-[#1a1c1b]/40">No sales records yet. Record your first sale to see analytics.</p>
+            </div>
+          )}
+
+          {top5Products.length > 0 && (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Top Products by Revenue</h3>
+              <ResponsiveContainer width="100%" height={Math.max(200, top5Products.length * 50)}>
+                <BarChart data={top5Products} layout="vertical" margin={{ left: 100 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis type="number" tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                  <YAxis dataKey="product" type="category" tick={{ fontSize: 11 }} stroke="#9ca3af" width={90} />
+                  <Tooltip formatter={currencyFormatter} />
+                  <Bar dataKey="revenue" fill="#005932" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {topProducts.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">All Products</h3>
+              <DataTable
+                columns={["Product", "Quantity Sold", "Revenue"]}
+                rows={topProducts.map((p) => [p.product, p.qty, formatMoney(p.revenue)])}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========== EXPENSE ANALYTICS ========== */}
+      {selectedReport === "expenses" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-4 text-sm text-[#1a1c1b]/70">
+            <span>Total <strong className="text-[#1a1c1b]">{formatMoney(totalExpenses)}</strong></span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span><strong className="text-[#1a1c1b]">{totalExpenseCount}</strong> expenses</span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span>Avg <strong className="text-[#1a1c1b]">{formatMoney(avgExpense)}</strong></span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span>Largest <strong className="text-[#1a1c1b]">{formatMoney(largestExpense)}</strong></span>
+          </div>
+
+          {expensesByCategory.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+                <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Expenses by Category</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={expensesByCategory}
+                      dataKey="total"
+                      nameKey="category"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={({ category, percent }) => `${category} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {expensesByCategory.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={currencyFormatter} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {expensesOverTime.length > 0 && (
+                <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+                  <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Expenses Over Time</h3>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={expensesOverTime}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                      <YAxis tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                      <Tooltip formatter={currencyFormatter} />
+                      <Bar dataKey="amount" fill="#dc2626" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+              <p className="text-sm text-[#1a1c1b]/40">No expense records yet. Record your first expense to see analytics.</p>
+            </div>
+          )}
+
+          {expensesByCategory.length > 0 && (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Expenses by Category (Detailed)</h3>
+              <DataTable
+                columns={["Category", "Transactions", "Total Amount"]}
+                rows={expensesByCategory.map((c) => [c.category, c.count, formatMoney(c.total)])}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========== INVENTORY ANALYTICS ========== */}
+      {selectedReport === "inventory" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-4 text-sm text-[#1a1c1b]/70">
+            <span><strong className="text-[#1a1c1b]">{data.inventory.length}</strong> products</span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span>Value <strong className="text-[#1a1c1b]">{formatMoney(inventoryValue)}</strong></span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span><strong className="text-[#1a1c1b]">{lowStockCount}</strong> low stock</span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span><strong className="text-[#1a1c1b]">{outOfStockCount}</strong> out of stock</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stockStatusData.length > 0 ? (
+              <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+                <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Stock Status</h3>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={stockStatusData}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {stockStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+                <p className="text-sm text-[#1a1c1b]/40">No products in inventory yet.</p>
+              </div>
+            )}
+            {inventoryByValue.length > 0 && (
+              <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+                <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Highest Value Products</h3>
+                <ResponsiveContainer width="100%" height={Math.max(200, inventoryByValue.length * 40)}>
+                  <BarChart data={inventoryByValue} layout="vertical" margin={{ left: 100 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis type="number" tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="#9ca3af" width={90} />
+                    <Tooltip formatter={currencyFormatter} />
+                    <Bar dataKey="value" fill="#005932" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {productsNeedingAttention.length > 0 ? (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Products Needing Attention</h3>
+              <DataTable
+                columns={["Product", "Stock", "Cost Price", "Sell Price", "Margin", "Status"]}
+                rows={productsNeedingAttention.map((p) => [
+                  p.name,
+                  p.stock,
+                  formatMoney(p.costPrice),
+                  formatMoney(p.sellPrice),
+                  `${margin(p)}%`,
+                  p.stock === 0 ? <Badge label="Out of Stock" variant="danger" /> : <Badge label="Low Stock" variant="warning" />,
+                ])}
+              />
+            </div>
+          ) : data.inventory.length > 0 ? (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+              <p className="text-sm text-[#1a1c1b]/40">All products are well stocked.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+              <p className="text-sm text-[#1a1c1b]/40">No products in inventory yet. Add products to see analytics.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========== CUSTOMER ANALYTICS ========== */}
+      {selectedReport === "customers" && (
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-4 text-sm text-[#1a1c1b]/70">
+            <span><strong className="text-[#1a1c1b]">{data.customers.length}</strong> customers</span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span><strong className="text-[#1a1c1b]">{customersWithDebt.length}</strong> with debt</span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span>Total debt <strong className="text-[#1a1c1b]">{formatMoney(customerDebt)}</strong></span>
+            <span className="text-[#1a1c1b]/30">·</span>
+            <span>Largest <strong className="text-[#1a1c1b]">{formatMoney(largestCustomerDebt)}</strong></span>
+          </div>
+
+          {topDebtCustomers.length > 0 && (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Customers with Highest Debt</h3>
+              <ResponsiveContainer width="100%" height={Math.max(200, topDebtCustomers.length * 50)}>
+                <BarChart data={topDebtCustomers} layout="vertical" margin={{ left: 100 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis type="number" tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
                   <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="#9ca3af" width={90} />
                   <Tooltip formatter={currencyFormatter} />
-                  <Bar dataKey="value" fill="#005932" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="debt" fill="#795900" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          ) : null}
+          )}
+
+          {sortedCustomersByDebt.length > 0 ? (
+            <div>
+              <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Customer Debt Overview</h3>
+              <DataTable
+                columns={["Customer", "Outstanding Balance", "Last Activity"]}
+                rows={sortedCustomersByDebt.map((c) => [c.name, formatMoney(c.debt), c.lastActivity])}
+              />
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
+              <p className="text-sm text-[#1a1c1b]/40">No customers with debt yet.</p>
+            </div>
+          )}
         </div>
+      )}
 
-        {productsNeedingAttention.length > 0 ? (
-          <div>
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
-              Products Needing Attention
-            </h3>
-            <DataTable
-              columns={["Product", "Stock", "Cost Price", "Sell Price", "Margin", "Status"]}
-              rows={productsNeedingAttention.map((p) => [
-                p.name,
-                p.stock,
-                formatMoney(p.costPrice),
-                formatMoney(p.sellPrice),
-                `${margin(p)}%`,
-                p.stock === 0 ? (
-                  <Badge label="Out of Stock" variant="danger" />
-                ) : (
-                  <Badge label="Low Stock" variant="warning" />
-                ),
-              ])}
-            />
+      {/* ========== FINANCIAL HEALTH ========== */}
+      {selectedReport === "health" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Profit Margin</p>
+              <p className={`text-3xl font-semibold font-mono ${profitMargin >= 0 ? "text-[#005932]" : "text-red-600"}`}>
+                {profitMargin.toFixed(1)}%
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Expense Ratio</p>
+              <p className={`text-3xl font-semibold font-mono ${expenseRatio <= 50 ? "text-[#005932]" : "text-red-600"}`}>
+                {expenseRatio.toFixed(1)}%
+              </p>
+            </div>
+            <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+              <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">Debt Ratio</p>
+              <p className={`text-3xl font-semibold font-mono ${debtRatio <= 30 ? "text-[#005932]" : "text-red-600"}`}>
+                {debtRatio.toFixed(1)}%
+              </p>
+            </div>
           </div>
-        ) : data.inventory.length > 0 ? (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
-            <p className="text-sm text-[#1a1c1b]/40">All products are well stocked.</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
-            <p className="text-sm text-[#1a1c1b]/40">No products in inventory yet. Add products to see analytics.</p>
-          </div>
-        )}
-      </section>
-
-      {/* 5. Customer Analytics */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
-          Customer Analytics
-        </h2>
-        <div className="flex flex-wrap gap-4 mb-4 text-sm text-[#1a1c1b]/70">
-          <span><strong className="text-[#1a1c1b]">{data.customers.length}</strong> customers</span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span><strong className="text-[#1a1c1b]">{customersWithDebt.length}</strong> with debt</span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span>Total debt <strong className="text-[#1a1c1b]">{formatMoney(customerDebt)}</strong></span>
-          <span className="text-[#1a1c1b]/30">·</span>
-          <span>Largest <strong className="text-[#1a1c1b]">{formatMoney(largestCustomerDebt)}</strong></span>
         </div>
+      )}
 
-        {topDebtCustomers.length > 0 ? (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm mb-4">
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">
-              Customers with Highest Debt
-            </h3>
-            <ResponsiveContainer width="100%" height={Math.max(200, topDebtCustomers.length * 50)}>
-              <BarChart data={topDebtCustomers} layout="vertical" margin={{ left: 100 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis type="number" tickFormatter={currencyFormatter} tick={{ fontSize: 11 }} stroke="#9ca3af" />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} stroke="#9ca3af" width={90} />
-                <Tooltip formatter={currencyFormatter} />
-                <Bar dataKey="debt" fill="#795900" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : null}
-
-        {sortedCustomersByDebt.length > 0 ? (
-          <div>
-            <h3 className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
-              Customer Debt Overview
-            </h3>
-            <DataTable
-              columns={["Customer", "Outstanding Balance", "Last Activity"]}
-              rows={sortedCustomersByDebt.map((c) => [
-                c.name,
-                formatMoney(c.debt),
-                c.lastActivity,
-              ])}
-            />
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-6 text-center shadow-sm">
-            <p className="text-sm text-[#1a1c1b]/40">No customers with debt yet.</p>
-          </div>
-        )}
-      </section>
-
-      {/* 6. Financial Health */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
-          Financial Health
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ========== EXPORT REPORTS ========== */}
+      {selectedReport === "exports" && (
+        <div className="space-y-6">
           <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-            <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
-              Profit Margin
+            <p className="text-sm text-[#1a1c1b]/60 mb-4">
+              Download detailed reports for your records or to share with stakeholders.
             </p>
-            <p
-              className={`text-3xl font-semibold font-mono ${
-                profitMargin >= 0 ? "text-[#005932]" : "text-red-600"
-              }`}
-            >
-              {profitMargin.toFixed(1)}%
-            </p>
-          </div>
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-            <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
-              Expense Ratio
-            </p>
-            <p
-              className={`text-3xl font-semibold font-mono ${
-                expenseRatio <= 50 ? "text-[#005932]" : "text-red-600"
-              }`}
-            >
-              {expenseRatio.toFixed(1)}%
-            </p>
-          </div>
-          <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-            <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-2">
-              Debt Ratio
-            </p>
-            <p
-              className={`text-3xl font-semibold font-mono ${
-                debtRatio <= 30 ? "text-[#005932]" : "text-red-600"
-              }`}
-            >
-              {debtRatio.toFixed(1)}%
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 7. Export Reports */}
-      <section>
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-4">
-          Export Reports
-        </h2>
-        <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-          <p className="text-sm text-[#1a1c1b]/60 mb-4">
-            Download detailed reports for your records or to share with stakeholders.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Btn
-              variant="secondary"
-              onClick={() => {
-                const rows = [
-                  ["Metric", "Value"],
-                  ["Gross Sales", formatMoney(grossSales)],
-                  ["Total Sales Count", String(totalSalesCount)],
-                  ["Average Sale Value", formatMoney(avgSaleValue)],
-                  ["Highest Sale", formatMoney(highestSale)],
-                  ...topProducts.map((p) => [`Top Product: ${p.product}`, formatMoney(p.revenue)]),
-                ];
-                const csv = rows.map((r) => r.join(",")).join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "sales-report.csv";
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              icon={<Download size={14} />}
-            >
-              Sales Report
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => {
-                const rows = [
-                  ["Category", "Transactions", "Total Amount"],
-                  ...expensesByCategory.map((c) => [c.category, String(c.count), formatMoney(c.total)]),
-                ];
-                const csv = rows.map((r) => r.join(",")).join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "expense-report.csv";
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              icon={<Download size={14} />}
-            >
-              Expense Report
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => {
-                const rows = [
-                  ["Product", "Stock", "Cost Price", "Sell Price", "Margin"],
-                  ...data.inventory.map((p) => [
-                    p.name,
-                    String(p.stock),
-                    formatMoney(p.costPrice),
-                    formatMoney(p.sellPrice),
-                    `${margin(p)}%`,
-                  ]),
-                ];
-                const csv = rows.map((r) => r.join(",")).join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "inventory-report.csv";
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              icon={<Download size={14} />}
-            >
-              Inventory Report
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => {
-                const rows = [
-                  ["Customer", "Outstanding Balance", "Last Activity", "Status"],
-                  ...sortedCustomersByDebt.map((c) => [
-                    c.name,
-                    formatMoney(c.debt),
-                    c.lastActivity,
-                    c.status,
-                  ]),
-                ];
-                const csv = rows.map((r) => r.join(",")).join("\n");
-                const blob = new Blob([csv], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "customer-debt-report.csv";
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
-              icon={<Download size={14} />}
-            >
-              Customer Debt Report
-            </Btn>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Btn
+                variant="secondary"
+                onClick={() => {
+                  const rows = [
+                    ["Metric", "Value"],
+                    ["Gross Sales", formatMoney(grossSales)],
+                    ["Total Sales Count", String(totalSalesCount)],
+                    ["Average Sale Value", formatMoney(avgSaleValue)],
+                    ["Highest Sale", formatMoney(highestSale)],
+                    ...topProducts.map((p) => [`Top Product: ${p.product}`, formatMoney(p.revenue)]),
+                  ];
+                  const csv = rows.map((r) => r.join(",")).join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "sales-report.csv";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                icon={<Download size={14} />}
+              >
+                Sales Report
+              </Btn>
+              <Btn
+                variant="secondary"
+                onClick={() => {
+                  const rows = [
+                    ["Category", "Transactions", "Total Amount"],
+                    ...expensesByCategory.map((c) => [c.category, String(c.count), formatMoney(c.total)]),
+                  ];
+                  const csv = rows.map((r) => r.join(",")).join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "expense-report.csv";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                icon={<Download size={14} />}
+              >
+                Expense Report
+              </Btn>
+              <Btn
+                variant="secondary"
+                onClick={() => {
+                  const rows = [
+                    ["Product", "Stock", "Cost Price", "Sell Price", "Margin"],
+                    ...data.inventory.map((p) => [
+                      p.name,
+                      String(p.stock),
+                      formatMoney(p.costPrice),
+                      formatMoney(p.sellPrice),
+                      `${margin(p)}%`,
+                    ]),
+                  ];
+                  const csv = rows.map((r) => r.join(",")).join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "inventory-report.csv";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                icon={<Download size={14} />}
+              >
+                Inventory Report
+              </Btn>
+              <Btn
+                variant="secondary"
+                onClick={() => {
+                  const rows = [
+                    ["Customer", "Outstanding Balance", "Last Activity", "Status"],
+                    ...sortedCustomersByDebt.map((c) => [
+                      c.name,
+                      formatMoney(c.debt),
+                      c.lastActivity,
+                      c.status,
+                    ]),
+                  ];
+                  const csv = rows.map((r) => r.join(",")).join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "customer-debt-report.csv";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+                icon={<Download size={14} />}
+              >
+                Customer Debt Report
+              </Btn>
+            </div>
           </div>
         </div>
-      </section>
+      )}
     </div>
   );
 }
