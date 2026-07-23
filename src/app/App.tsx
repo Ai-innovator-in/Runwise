@@ -1335,7 +1335,16 @@ function CoachScreen() {
     try {
       setLoading(true);
       setError("");
-      setAnswer(await api("/api/coach", { method: "POST", body: JSON.stringify({ question }) }));
+      const response = await api("/api/coach", { method: "POST", body: JSON.stringify({ question }) });
+      // Normalize API response to match expected type
+      const normalized = {
+        diagnosis: response.diagnosis || response.answer || "",
+        recommendations: Array.isArray(response.recommendations) ? response.recommendations : [],
+        nextSteps: Array.isArray(response.nextSteps) ? response.nextSteps : [],
+        confidence: response.confidence || "low",
+        limitations: Array.isArray(response.limitations) ? response.limitations : (Array.isArray(response.dataLimitations) ? response.dataLimitations : []),
+      };
+      setAnswer(normalized);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Coach request failed.");
     } finally {
