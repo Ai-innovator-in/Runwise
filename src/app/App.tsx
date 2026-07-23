@@ -1776,8 +1776,8 @@ function TopBar({ data, onSignOut }: { data: AppData; onSignOut: () => void }) {
   const location = String(data.settings.location || "No location set");
   return (
     <header className="h-14 bg-white border-b border-[#1a1c1b]/8 flex items-center justify-between px-5 shrink-0">
-      <div><p className="text-xs font-semibold text-[#005932]">MarketOS Offline</p><p className="text-xs text-[#1a1c1b]/40">{businessName} · {location}</p></div>
-      <div className="flex items-center gap-3"><Badge label="Offline Mode Active" variant="success" /><Badge label="Local API Running" variant="local" /><Bell size={16} className="text-[#1a1c1b]/40" /><Btn variant="ghost" onClick={onSignOut}>Sign out</Btn></div>
+      <div><p className="text-xs font-semibold text-[#005932]">MarketOS</p><p className="text-xs text-[#1a1c1b]/40">{businessName} · {location}</p></div>
+      <div className="flex items-center gap-3"><Bell size={16} className="text-[#1a1c1b]/40" /><Btn variant="ghost" onClick={onSignOut}>Sign out</Btn></div>
     </header>
   );
 }
