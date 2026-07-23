@@ -3071,12 +3071,16 @@ async function makeInvoicePdf(
   const invoiceDate = clean(invoice.date);
   const dueDate = clean(invoice.dueDate);
   const customerName = clean(invoice.customerName);
+  const customerAddress = clean(invoice.customerAddress || "");
+  const customerEmail = clean(invoice.customerEmail || "");
+  const customerPhone = clean(invoice.customerPhone || "");
   const item = clean(invoice.item);
   const quantity = invoice.quantity;
   const unitPrice = invoice.unitPrice;
   const subtotal = total;
   const amountPaid = invoice.amountPaid;
   const balanceDue = balance;
+  const notes = clean(invoice.notes || "");
 
   // Create PDF document
   const pdfDoc = await PDFDocument.create();
@@ -3110,6 +3114,20 @@ async function makeInvoicePdf(
   const page = pdfDoc.addPage([595.28, 841.89]); // A4 portrait
   const { width, height } = page.getSize();
 
+  // ========== BRAND COLOR CONSTANTS ==========
+  const PRIMARY_COLOR = rgb(0.1176, 0.2275, 0.5412); // #1E3A8A
+  const PRIMARY_DARK = rgb(0.0784, 0.1569, 0.3922); // #14286A
+  const LIGHT_BACKGROUND = rgb(0.98, 0.98, 0.98); // #FAFAFA
+  const BORDER_COLOR = rgb(0.85, 0.85, 0.85); // #D9D9D9
+  const TEXT_COLOR = rgb(0.1, 0.1, 0.1); // #1A1A1A
+  const MUTED_TEXT_COLOR = rgb(0.5, 0.5, 0.5); // #808080
+  const WHITE = rgb(1, 1, 1);
+  const BLACK = rgb(0, 0, 0);
+  const STATUS_PAID_BG = rgb(0.2, 0.6, 0.2); // green
+  const STATUS_UNPAID_BG = rgb(0.8, 0.2, 0.2); // red
+  const STATUS_PARTIAL_BG = rgb(0.8, 0.6, 0.1); // amber
+  const STATUS_DRAFT_BG = rgb(0.5, 0.5, 0.5); // gray
+
   // ========== LAYOUT CONSTANTS ==========
   const MARGIN = 56; // ~0.75 inch
   const PAGE_WIDTH = width - 2 * MARGIN;
@@ -3117,24 +3135,28 @@ async function makeInvoicePdf(
   const RIGHT_X = width - MARGIN;
 
   const SECTION_GAP = 20;
-  const CELL_PADDING = 6;
-  const ROW_HEIGHT = 24;
-  const HEADER_HEIGHT = 80;
-  const TOTAL_BOX_HEIGHT = 100;
+  const CELL_PADDING = 8;
+  const ROW_HEIGHT = 30;
+  const HEADER_HEIGHT = 90;
+  const TOTAL_BOX_HEIGHT = 110;
   const TOTAL_BOX_WIDTH = 240;
 
-  // Colors
-  const ACCENT_COLOR = rgb(0.1176, 0.2275, 0.5412); // #1E3A8A
-  const WHITE = rgb(1, 1, 1);
-  const BLACK = rgb(0, 0, 0);
-  const GRAY_LIGHT = rgb(0.95, 0.95, 0.95);
-  const GRAY_MEDIUM = rgb(0.8, 0.8, 0.8);
-  const GRAY_DARK = rgb(0.4, 0.4, 0.4);
-
-  // Helper functions
-  const drawText = (text, x, y, size = 10, bold = false, color = BLACK) => {
+  // ========== HELPER FUNCTIONS ==========
+  const drawText = (text, x, y, size = 10, bold = false, color = TEXT_COLOR) => {
     const font = bold ? customBoldFont : customFont;
     page.drawText(text, { x, y, size, font, color });
+  };
+
+  const drawRightAlignedText = (text, rightX, y, size = 10, bold = false, color = TEXT_COLOR) => {
+    const font = bold ? customBoldFont : customFont;
+    const textWidth = font.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: rightX - textWidth, y, size, font, color });
+  };
+
+  const drawCenteredText = (text, centerX, y, size = 10, bold = false, color = TEXT_COLOR) => {
+    const font = bold ? customBoldFont : customFont;
+    const textWidth = font.widthOfTextAtSize(text, size);
+    page.drawText(text, { x: centerX - textWidth / 2, y, size, font, color });
   };
 
   const drawRect = (x, y, w, h, fillColor = null, borderColor = null, borderWidth = 0) => {
@@ -3147,13 +3169,86 @@ async function makeInvoicePdf(
     page.drawRectangle(options);
   };
 
-  const drawLine = (x1, y1, x2, y2, color = GRAY_MEDIUM, thickness = 1) => {
+  const drawLine = (x1, y1, x2, y2, color = BORDER_COLOR, thickness = 1) => {
     page.drawLine({
       start: { x: x1, y: y1 },
       end: { x: x2, y: y2 },
       thickness,
       color,
     });
+  };
+
+  const drawOptionalField = (label, value, x, y, labelSize = 8, valueSize = 10) => {
+    if (!value) return y;
+    drawText(label, x, y, labelSize, true, MUTED_TEXT_COLOR);
+    drawText(value, x, y - 12, valueSize, false, TEXT_COLOR);
+    return y - 28;
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const month = months[monthIndex] || parts[1];
+    const day = parseInt(parts[2], 10);
+    const year = parts[0];
+    return `${day} ${month} ${year}`;
+  };
+
+  const drawStatusBadge = (status, x, y, width) => {
+    let bgColor, textColor, label;
+    switch (status) {
+      case "PAID":
+        bgColor = STATUS_PAID_BG;
+        textColor = WHITE;
+        label = "PAID";
+        break;
+      case "UNPAID":
+        bgColor = STATUS_UNPAID_BG;
+        textColor = WHITE;
+        label = "UNPAID";
+        break;
+      case "PARTIAL":
+        bgColor = STATUS_PARTIAL_BG;
+        textColor = WHITE;
+        label = "PARTIAL";
+        break;
+      default:
+        bgColor = STATUS_DRAFT_BG;
+        textColor = WHITE;
+        label = "DRAFT";
+    }
+
+    const fontSize = 12;
+    const font = customBoldFont;
+    const textWidth = font.widthOfTextAtSize(label, fontSize);
+    const badgePaddingX = 12;
+    const badgePaddingY = 6;
+    const badgeWidth = textWidth + badgePaddingX * 2;
+    const badgeHeight = fontSize + badgePaddingY * 2;
+    const badgeX = x + (width - badgeWidth) / 2;
+    const badgeY = y - badgeHeight;
+
+    drawRect(badgeX, badgeY, badgeWidth, badgeHeight, bgColor);
+    drawCenteredText(label, badgeX + badgeWidth / 2, badgeY + (badgeHeight - fontSize) / 2, fontSize, true, textColor);
+
+    return badgeY;
+  };
+
+  const truncateText = (text, maxWidth, fontSize) => {
+    const font = customFont;
+    const textWidth = font.widthOfTextAtSize(text, fontSize);
+    if (textWidth <= maxWidth) return text;
+    let truncated = text;
+    while (truncated.length > 0) {
+      truncated = truncated.slice(0, -1);
+      if (font.widthOfTextAtSize(truncated + "...", fontSize) <= maxWidth) {
+        return truncated + "...";
+      }
+    }
+    return "";
   };
 
   // ========== SEQUENTIAL LAYOUT ==========
@@ -3164,41 +3259,66 @@ async function makeInvoicePdf(
   const headerBottom = headerTop - HEADER_HEIGHT;
 
   // Draw header background
-  drawRect(LEFT_X, headerBottom, PAGE_WIDTH, HEADER_HEIGHT, ACCENT_COLOR);
+  drawRect(LEFT_X, headerBottom, PAGE_WIDTH, HEADER_HEIGHT, PRIMARY_COLOR);
 
   // Left side: Business info
-  drawText(businessName, LEFT_X + 16, headerTop - 24, 18, true, WHITE);
+  drawText(businessName, LEFT_X + 20, headerTop - 28, 22, true, WHITE);
   if (location) {
-    drawText(location, LEFT_X + 16, headerTop - 44, 10, false, rgb(0.8, 0.8, 0.8));
+    drawText(location, LEFT_X + 20, headerTop - 50, 9, false, rgb(0.8, 0.8, 0.8));
   }
 
   // Right side: Invoice details
-  const invoiceRightX = RIGHT_X - 200;
-  drawText("INVOICE", invoiceRightX, headerTop - 24, 24, true, WHITE);
-  drawText(`Invoice #: ${invoiceNumber}`, invoiceRightX, headerTop - 50, 10, false, rgb(0.8, 0.8, 0.8));
-  drawText(`Date: ${invoiceDate}`, invoiceRightX, headerTop - 64, 10, false, rgb(0.8, 0.8, 0.8));
-  drawText(`Due Date: ${dueDate}`, invoiceRightX, headerTop - 78, 10, false, rgb(0.8, 0.8, 0.8));
+  const invoiceRightX = RIGHT_X - 20;
+  const metadataStartY = headerTop - 28;
+  const metadataSpacing = 14;
+
+  drawRightAlignedText("INVOICE", invoiceRightX, metadataStartY, 24, true, WHITE);
+  drawRightAlignedText(`Invoice #: ${invoiceNumber}`, invoiceRightX, metadataStartY - metadataSpacing - 4, 9, false, rgb(0.8, 0.8, 0.8));
+  drawRightAlignedText(`Date: ${invoiceDate}`, invoiceRightX, metadataStartY - metadataSpacing * 2 - 4, 9, false, rgb(0.8, 0.8, 0.8));
+  drawRightAlignedText(`Due Date: ${dueDate}`, invoiceRightX, metadataStartY - metadataSpacing * 3 - 4, 9, false, rgb(0.8, 0.8, 0.8));
 
   currentY = headerBottom - SECTION_GAP;
 
   // ========== CUSTOMER SECTION ==========
-  const customerCardHeight = 60;
+  const customerCardHeight = 80;
   const customerCardTop = currentY;
   const customerCardBottom = customerCardTop - customerCardHeight;
 
   // Left card: BILL TO
   const leftCardWidth = (PAGE_WIDTH - SECTION_GAP) / 2;
-  drawRect(LEFT_X, customerCardBottom, leftCardWidth, customerCardHeight, null, GRAY_MEDIUM, 1);
-  drawText("BILL TO", LEFT_X + 12, customerCardTop - 16, 10, true, GRAY_DARK);
-  drawText(customerName, LEFT_X + 12, customerCardTop - 36, 12, false, BLACK);
+  drawRect(LEFT_X, customerCardBottom, leftCardWidth, customerCardHeight, null, BORDER_COLOR, 1);
+
+  // BILL TO label
+  drawText("BILL TO", LEFT_X + 14, customerCardTop - 16, 9, true, MUTED_TEXT_COLOR);
+
+  // Customer info
+  let customerInfoY = customerCardTop - 34;
+  if (customerName) {
+    drawText(customerName, LEFT_X + 14, customerInfoY, 11, false, TEXT_COLOR);
+    customerInfoY -= 18;
+  }
+  if (customerAddress) {
+    drawText(customerAddress, LEFT_X + 14, customerInfoY, 9, false, MUTED_TEXT_COLOR);
+    customerInfoY -= 14;
+  }
+  if (customerEmail) {
+    drawText(customerEmail, LEFT_X + 14, customerInfoY, 9, false, MUTED_TEXT_COLOR);
+    customerInfoY -= 14;
+  }
+  if (customerPhone) {
+    drawText(customerPhone, LEFT_X + 14, customerInfoY, 9, false, MUTED_TEXT_COLOR);
+  }
 
   // Right card: STATUS
   const rightCardX = LEFT_X + leftCardWidth + SECTION_GAP;
-  const statusText = balanceDue > 0 ? "UNPAID" : "PAID";
-  const statusColor = balanceDue > 0 ? rgb(0.8, 0.2, 0.2) : rgb(0.2, 0.6, 0.2);
-  drawRect(rightCardX, customerCardBottom, leftCardWidth, customerCardHeight, null, GRAY_MEDIUM, 1);
-  drawText("STATUS", rightCardX + 12, customerCardTop - 16, 10, true, GRAY_DARK);
-  drawText(statusText, rightCardX + 12, customerCardTop - 36, 14, true, statusColor);
+  drawRect(rightCardX, customerCardBottom, leftCardWidth, customerCardHeight, null, BORDER_COLOR, 1);
+
+  // STATUS label
+  drawText("STATUS", rightCardX + 14, customerCardTop - 16, 9, true, MUTED_TEXT_COLOR);
+
+  // Status badge
+  const statusLabel = balanceDue > 0 ? "UNPAID" : "PAID";
+  drawStatusBadge(statusLabel, rightCardX + 14, customerCardTop - 22, leftCardWidth - 28);
 
   currentY = customerCardBottom - SECTION_GAP;
 
@@ -3220,7 +3340,7 @@ async function makeInvoicePdf(
   // Draw header row background
   const headerRowTop = tableTop;
   const headerRowBottom = headerRowTop - ROW_HEIGHT;
-  drawRect(tableLeft, headerRowBottom, tableWidth, ROW_HEIGHT, ACCENT_COLOR);
+  drawRect(tableLeft, headerRowBottom, tableWidth, ROW_HEIGHT, PRIMARY_COLOR);
 
   // Draw header text
   headers.forEach((header, i) => {
@@ -3246,34 +3366,47 @@ async function makeInvoicePdf(
   const dataRowTop = headerRowBottom;
   const dataRowBottom = dataRowTop - ROW_HEIGHT;
 
-  // Description (left-aligned)
-  drawText(item, colDefs[0].x + CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
+  // Description (left-aligned, truncated if needed)
+  const descMaxWidth = colDefs[0].width - CELL_PADDING * 2;
+  const truncatedDesc = truncateText(item, descMaxWidth, 10);
+  drawText(truncatedDesc, colDefs[0].x + CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, TEXT_COLOR);
 
   // Quantity (centered)
   const qtyText = String(quantity);
   const qtyWidth = customFont.widthOfTextAtSize(qtyText, 10);
   const qtyCenterX = colDefs[1].x + colDefs[1].width / 2;
-  drawText(qtyText, qtyCenterX - qtyWidth / 2, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
+  drawCenteredText(qtyText, qtyCenterX, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, TEXT_COLOR);
 
   // Unit Price (right-aligned)
   const unitPriceText = `₦${unitPrice.toLocaleString()}`;
-  const unitPriceWidth = customFont.widthOfTextAtSize(unitPriceText, 10);
-  drawText(unitPriceText, colDefs[2].x + colDefs[2].width - unitPriceWidth - CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
+  drawRightAlignedText(unitPriceText, colDefs[2].x + colDefs[2].width - CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, TEXT_COLOR);
 
   // Amount (right-aligned)
   const amountText = `₦${subtotal.toLocaleString()}`;
-  const amountWidth = customFont.widthOfTextAtSize(amountText, 10);
-  drawText(amountText, colDefs[3].x + colDefs[3].width - amountWidth - CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, BLACK);
+  drawRightAlignedText(amountText, colDefs[3].x + colDefs[3].width - CELL_PADDING, dataRowBottom + (ROW_HEIGHT - 10) / 2, 10, false, TEXT_COLOR);
 
   // Draw data row cell borders
   colDefs.forEach((col) => {
-    drawRect(col.x, dataRowBottom, col.width, ROW_HEIGHT, null, GRAY_MEDIUM, 0.5);
+    drawRect(col.x, dataRowBottom, col.width, ROW_HEIGHT, null, BORDER_COLOR, 0.5);
   });
 
   // Draw bottom border of table
-  drawLine(tableLeft, dataRowBottom, tableLeft + tableWidth, dataRowBottom, GRAY_MEDIUM, 1);
+  drawLine(tableLeft, dataRowBottom, tableLeft + tableWidth, dataRowBottom, BORDER_COLOR, 1);
 
   currentY = dataRowBottom - SECTION_GAP;
+
+  // ========== NOTES SECTION (optional) ==========
+  let notesSectionBottom = currentY;
+  if (notes) {
+    const notesSectionHeight = 50;
+    const notesSectionTop = currentY;
+    notesSectionBottom = notesSectionTop - notesSectionHeight;
+
+    drawText("NOTES", LEFT_X, notesSectionTop - 14, 9, true, MUTED_TEXT_COLOR);
+    drawText(notes, LEFT_X, notesSectionTop - 30, 9, false, TEXT_COLOR);
+
+    currentY = notesSectionBottom - SECTION_GAP;
+  }
 
   // ========== TOTALS SECTION ==========
   const totalsCardTop = currentY;
@@ -3281,38 +3414,39 @@ async function makeInvoicePdf(
   const totalsCardLeft = RIGHT_X - TOTAL_BOX_WIDTH;
 
   // Draw totals card background
-  drawRect(totalsCardLeft, totalsCardBottom, TOTAL_BOX_WIDTH, TOTAL_BOX_HEIGHT, null, GRAY_MEDIUM, 1);
+  drawRect(totalsCardLeft, totalsCardBottom, TOTAL_BOX_WIDTH, TOTAL_BOX_HEIGHT, null, BORDER_COLOR, 1);
 
   // Subtotal
   const subtotalY = totalsCardTop - 18;
-  drawText("Subtotal:", totalsCardLeft + 12, subtotalY, 10, false, BLACK);
+  drawText("Subtotal:", totalsCardLeft + 14, subtotalY, 10, false, TEXT_COLOR);
   const subtotalText = `₦${subtotal.toLocaleString()}`;
-  const subtotalTextWidth = customFont.widthOfTextAtSize(subtotalText, 10);
-  drawText(subtotalText, totalsCardLeft + TOTAL_BOX_WIDTH - subtotalTextWidth - 12, subtotalY, 10, false, BLACK);
+  drawRightAlignedText(subtotalText, totalsCardLeft + TOTAL_BOX_WIDTH - 14, subtotalY, 10, false, TEXT_COLOR);
 
   // Amount Paid
   const paidY = totalsCardTop - 38;
-  drawText("Amount Paid:", totalsCardLeft + 12, paidY, 10, false, BLACK);
+  drawText("Amount Paid:", totalsCardLeft + 14, paidY, 10, false, TEXT_COLOR);
   const paidText = `₦${amountPaid.toLocaleString()}`;
-  const paidTextWidth = customFont.widthOfTextAtSize(paidText, 10);
-  drawText(paidText, totalsCardLeft + TOTAL_BOX_WIDTH - paidTextWidth - 12, paidY, 10, false, BLACK);
+  drawRightAlignedText(paidText, totalsCardLeft + TOTAL_BOX_WIDTH - 14, paidY, 10, false, TEXT_COLOR);
+
+  // Separator line above Balance Due
+  const separatorY = totalsCardTop - 52;
+  drawLine(totalsCardLeft + 14, separatorY, totalsCardLeft + TOTAL_BOX_WIDTH - 14, separatorY, BORDER_COLOR, 0.5);
 
   // Balance Due (focal point)
-  const balanceY = totalsCardTop - 62;
-  const balanceBoxHeight = 28;
+  const balanceY = totalsCardTop - 66;
+  const balanceBoxHeight = 30;
   const balanceBoxTop = balanceY + 4;
   const balanceBoxBottom = balanceBoxTop - balanceBoxHeight;
 
   // Draw accent background for balance due
-  drawRect(totalsCardLeft + 6, balanceBoxBottom, TOTAL_BOX_WIDTH - 12, balanceBoxHeight, ACCENT_COLOR);
+  drawRect(totalsCardLeft + 8, balanceBoxBottom, TOTAL_BOX_WIDTH - 16, balanceBoxHeight, PRIMARY_COLOR);
 
   // Balance Due label
-  drawText("BALANCE DUE:", totalsCardLeft + 16, balanceBoxBottom + (balanceBoxHeight - 14) / 2, 14, true, WHITE);
+  drawText("BALANCE DUE:", totalsCardLeft + 16, balanceBoxBottom + (balanceBoxHeight - 14) / 2, 12, true, WHITE);
 
   // Balance Due amount
   const balanceText = `₦${balanceDue.toLocaleString()}`;
-  const balanceTextWidth = customFont.widthOfTextAtSize(balanceText, 14);
-  drawText(balanceText, totalsCardLeft + TOTAL_BOX_WIDTH - balanceTextWidth - 16, balanceBoxBottom + (balanceBoxHeight - 14) / 2, 14, true, WHITE);
+  drawRightAlignedText(balanceText, totalsCardLeft + TOTAL_BOX_WIDTH - 16, balanceBoxBottom + (balanceBoxHeight - 14) / 2, 14, true, WHITE);
 
   currentY = totalsCardBottom - SECTION_GAP;
 
@@ -3320,14 +3454,15 @@ async function makeInvoicePdf(
   const footerTop = currentY;
 
   // Draw separator line
-  drawLine(LEFT_X, footerTop, RIGHT_X, footerTop, GRAY_MEDIUM, 1);
+  drawLine(LEFT_X, footerTop, RIGHT_X, footerTop, BORDER_COLOR, 1);
 
   // Footer text
-  drawText("Thank you for your business!", LEFT_X, footerTop - 16, 10, false, BLACK);
+  drawText("Thank you for your business!", LEFT_X, footerTop - 18, 11, true, TEXT_COLOR);
   if (dueDate) {
-    drawText(`Payment due by ${dueDate}`, LEFT_X, footerTop - 34, 9, false, GRAY_DARK);
+    const formattedDueDate = formatDate(dueDate);
+    drawText(`Payment due by ${formattedDueDate}`, LEFT_X, footerTop - 36, 9, false, MUTED_TEXT_COLOR);
   }
-  drawText("Generated by MarketOS", LEFT_X, footerTop - 50, 8, false, GRAY_DARK);
+  drawText("Generated by MarketOS", LEFT_X, footerTop - 52, 8, false, MUTED_TEXT_COLOR);
 
   // Serialize PDF
   const pdfBytes = await pdfDoc.save();
