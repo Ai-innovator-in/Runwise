@@ -184,8 +184,12 @@ const cleanProductName = (raw) => {
 };
 
 function emptyBusiness({ businessName, location, industry, businessType, targetCustomers, mainProducts, primaryGoal }) {
+  const now = new Date();
+  const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   return {
     plan: "free",
+    trialStartedAt: now.toISOString(),
+    trialEndsAt: trialEnd.toISOString(),
     invoiceCountThisMonth: 0,
     invoiceMonth: "",
     settings: {
@@ -507,11 +511,25 @@ function summary(data) {
   };
 }
 
+function hasPremiumAccess(data) {
+  // Pro users always have premium access
+  if (data.plan === "pro") return true;
+  // Check if trial is active
+  if (data.trialEndsAt) {
+    const now = new Date();
+    const trialEnd = new Date(data.trialEndsAt);
+    if (now < trialEnd) return true;
+  }
+  return false;
+}
+
 function bootstrap(user) {
   const data = user.data;
 
   // Ensure plan fields exist for backward compatibility
   data.plan ??= "free";
+  data.trialStartedAt ??= new Date().toISOString();
+  data.trialEndsAt ??= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   data.invoiceCountThisMonth ??= 0;
   data.invoiceMonth ??= "";
 
@@ -554,6 +572,9 @@ function bootstrap(user) {
   return {
     user: publicUser(user),
     plan: data.plan,
+    trialStartedAt: data.trialStartedAt,
+    trialEndsAt: data.trialEndsAt,
+    hasPremiumAccess: hasPremiumAccess(data),
     invoiceCountThisMonth: data.invoiceCountThisMonth,
     invoiceMonth: data.invoiceMonth,
     ...data,
@@ -4151,8 +4172,8 @@ async function handleApi(req, res) {
       data.invoiceCountThisMonth = 0;
     }
 
-    // Free plan limit check
-    if (data.plan === "free" && data.invoiceCountThisMonth >= 15) {
+    // Free plan limit check (only applies when user does NOT have premium access)
+    if (!hasPremiumAccess(data) && data.invoiceCountThisMonth >= 15) {
       throw Object.assign(
         new Error(
           "Free plan monthly invoice limit reached (15 invoices). Upgrade to Pro for unlimited invoices."

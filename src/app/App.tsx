@@ -69,6 +69,9 @@ type Draft = {
 type AppData = {
   user: { id: string; name: string; email: string; businessName: string; location: string };
   plan: "free" | "pro";
+  trialStartedAt: string;
+  trialEndsAt: string;
+  hasPremiumAccess: boolean;
   invoiceCountThisMonth: number;
   invoiceMonth: string;
   settings: Record<string, string | boolean>;
@@ -563,11 +566,22 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   const [saveError, setSaveError] = useState("");
   const subtotal = form.quantity * form.unitPrice;
 
+  const hasPremium = data.hasPremiumAccess;
   const isFreePlan = data.plan === "free";
   const invoiceLimit = 15;
   const invoicesUsed = data.invoiceCountThisMonth;
   const invoicesRemaining = Math.max(0, invoiceLimit - invoicesUsed);
-  const limitReached = isFreePlan && invoicesUsed >= invoiceLimit;
+  const limitReached = !hasPremium && invoicesUsed >= invoiceLimit;
+
+  // Calculate trial days remaining
+  const trialDaysRemaining = (() => {
+    if (!hasPremium || data.plan === "pro") return 0;
+    const now = new Date();
+    const trialEnd = new Date(data.trialEndsAt);
+    const diffMs = trialEnd.getTime() - now.getTime();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  })();
 
   const save = async () => {
     try {
@@ -600,7 +614,18 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Invoices this month</p>
-            {isFreePlan ? (
+            {hasPremium ? (
+              <div>
+                <p className="text-lg font-semibold text-[#005932]">Unlimited</p>
+                {data.plan === "pro" ? (
+                  <p className="text-sm text-[#005932]/60 mt-0.5">MarketOS Pro</p>
+                ) : (
+                  <p className="text-sm text-[#005932]/60 mt-0.5">
+                    Premium trial · {trialDaysRemaining} day{trialDaysRemaining !== 1 ? "s" : ""} remaining
+                  </p>
+                )}
+              </div>
+            ) : (
               <div>
                 <p className="text-lg font-semibold text-[#1a1c1b]">
                   {invoicesUsed} / {invoiceLimit} used
@@ -608,9 +633,8 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
                 <p className="text-sm text-[#1a1c1b]/60 mt-0.5">
                   {invoicesRemaining} invoice{invoicesRemaining !== 1 ? "s" : ""} remaining
                 </p>
+                <p className="text-xs text-[#1a1c1b]/40 mt-1">Free plan</p>
               </div>
-            ) : (
-              <p className="text-lg font-semibold text-[#005932]">Unlimited</p>
             )}
           </div>
           {limitReached && (
