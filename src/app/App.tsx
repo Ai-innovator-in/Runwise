@@ -203,11 +203,7 @@ function DashboardScreen({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-[#1a1c1b]">Dashboard</h1>
-          <p className="text-sm text-[#1a1c1b]/50 mt-0.5">Live data from the local MarketOS backend</p>
-        </div>
-        <div className="flex gap-2">
-          <Badge label="Offline" variant="success" />
-          <Badge label="Backend Connected" variant="local" />
+          <p className="text-sm text-[#1a1c1b]/50 mt-0.5">Live data from your business records</p>
         </div>
       </div>
 
@@ -1580,7 +1576,6 @@ function KnowledgeScreen({ data, refresh }: { data: AppData; refresh: (payload?:
           </div>
           {result && (
             <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-              <Badge label="Offline Knowledge" variant="local" />
               <p className="text-sm text-[#1a1c1b] leading-relaxed mt-3">{result.answer}</p>
               <div className="flex gap-2 mt-4">
                 {result.sources.map((source) => (
@@ -1675,12 +1670,12 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
 
   return (
     <div className="space-y-5">
-      <Header title="Settings" subtitle="Saved settings are persisted in the backend JSON database." />
+      <Header title="Settings" subtitle="Manage your business settings." />
       <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 grid grid-cols-2 gap-4 shadow-sm">
         {["businessName", "location", "currency", "language", "backupLocation"].map((key) => (
           <Field key={key} label={key.replace(/([A-Z])/g, " $1")}><input className={inputClass} value={String(form[key] ?? "")} onChange={(e) => setForm({ ...form, [key]: e.target.value })} /></Field>
         ))}
-        <div className="col-span-2 flex gap-2"><Btn onClick={save}>Save Settings</Btn><Badge label="Offline Mode Active" variant="success" /><Badge label="Cloud Sync Disabled" variant="neutral" /></div>
+        <div className="col-span-2 flex gap-2"><Btn onClick={save}>Save Settings</Btn><Badge label="Cloud Sync Disabled" variant="neutral" /></div>
       </div>
 
       {/* Account Deletion Section */}
@@ -1861,8 +1856,8 @@ function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string) => P
       <div className="w-full max-w-md bg-white rounded-xl border border-[#1a1c1b]/8 p-6 shadow-sm">
         <div className="mb-6">
           <div className="w-9 h-9 rounded bg-[#005932] flex items-center justify-center mb-3"><Zap size={18} className="text-white" /></div>
-          <h1 className="text-xl font-semibold text-[#1a1c1b]">MarketOS Offline</h1>
-          <p className="text-sm text-[#1a1c1b]/50 mt-1">Create an account or sign in to your local business workspace.</p>
+          <h1 className="text-xl font-semibold text-[#1a1c1b]">MarketOS</h1>
+          <p className="text-sm text-[#1a1c1b]/50 mt-1">Create an account or sign in to your business workspace.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
