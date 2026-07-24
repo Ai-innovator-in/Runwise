@@ -565,6 +565,7 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   const [form, setForm] = useState({ customerName: "", dueDate: "", item: "", quantity: 1, unitPrice: 0, amountPaid: 0 });
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(data.invoices[0] || null);
   const [saveError, setSaveError] = useState("");
+  const [dateFilter, setDateFilter] = useState<"all" | "today" | "2-days" | "3-days" | "7-days">("all");
   const subtotal = form.quantity * form.unitPrice;
 
   const hasPremium = data.hasPremiumAccess;
@@ -583,6 +584,28 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
     if (diffMs <= 0) return 0;
     return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   })();
+
+  // Date filter logic
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const filteredInvoices = useMemo(() => {
+    if (dateFilter === "all") return data.invoices;
+    const now = new Date();
+    const startDate = new Date(now);
+    if (dateFilter === "today") {
+      // keep startDate = now (today)
+    } else if (dateFilter === "2-days") {
+      startDate.setDate(startDate.getDate() - 1);
+    } else if (dateFilter === "3-days") {
+      startDate.setDate(startDate.getDate() - 2);
+    } else if (dateFilter === "7-days") {
+      startDate.setDate(startDate.getDate() - 6);
+    }
+    const startStr = startDate.toISOString().slice(0, 10);
+    return data.invoices.filter((inv) => {
+      if (!inv.date) return false;
+      return inv.date >= startStr && inv.date <= todayStr;
+    });
+  }, [data.invoices, dateFilter, todayStr]);
 
   const save = async () => {
     try {
@@ -657,9 +680,34 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
 
       {/* Invoice History */}
       <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Invoice History</h2>
-        {data.invoices.length === 0 ? (
-          <p className="text-sm text-[#1a1c1b]/40">No invoices yet. Create one using the form below.</p>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider">Invoice History</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-[#1a1c1b]/40">
+              {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? "s" : ""}
+            </span>
+            <select
+              className={`${inputClass} w-32 text-xs`}
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}
+            >
+              <option value="all">All</option>
+              <option value="today">Today</option>
+              <option value="2-days">Last 2 days</option>
+              <option value="3-days">Last 3 days</option>
+              <option value="7-days">Last 7 days</option>
+            </select>
+          </div>
+        </div>
+        {filteredInvoices.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-[#1a1c1b]/40 mb-3">No invoices found for this period.</p>
+            {dateFilter !== "all" && (
+              <Btn variant="secondary" onClick={() => setDateFilter("all")}>
+                All invoices
+              </Btn>
+            )}
+          </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-[#f9f9f6] border-b border-[#1a1c1b]/5">
@@ -672,7 +720,7 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1c1b]/5">
-              {data.invoices.map((inv) => {
+              {filteredInvoices.map((inv) => {
                 const total = inv.quantity * inv.unitPrice;
                 return (
                   <tr
