@@ -54,6 +54,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      preload: path.join(appRoot, "electron", "preload.mjs"),
     },
   });
 
@@ -69,6 +70,46 @@ app.on("second-instance", () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore();
     mainWindow.focus();
+  }
+});
+
+// IPC handler for opening external URLs securely
+import { ipcMain } from "electron";
+
+ipcMain.handle("open-external", async (event, url) => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") {
+      return { success: false, error: "Only HTTPS URLs are allowed." };
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname !== "marketos.app" && hostname !== "www.marketos.app") {
+      return { success: false, error: "This host is not allowed." };
+    }
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+// IPC handler for opening external URLs securely
+import { ipcMain } from "electron";
+
+ipcMain.handle("open-external", async (event, url) => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") {
+      return { success: false, error: "Only HTTPS URLs are allowed." };
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname !== "marketos.app" && hostname !== "www.marketos.app") {
+      return { success: false, error: "This host is not allowed." };
+    }
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 });
 

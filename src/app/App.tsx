@@ -38,7 +38,8 @@ type ScreenId =
   | "reports"
   | "coach"
   | "knowledge"
-  | "settings";
+  | "settings"
+  | "plans";
 
 type Product = { id: string; name: string; stock: number; costPrice: number; sellPrice: number; damaged: number };
 type Sale = { id: string; date: string; product: string; quantity: number; unitPrice: number; channel: string; customer?: string };
@@ -101,6 +102,8 @@ const NAV_ITEMS: { id: ScreenId; label: string; icon: ReactNode }[] = [
   { id: "coach", label: "Business Coach", icon: <Zap size={16} /> },
   { id: "knowledge", label: "Knowledge Base", icon: <BookOpen size={16} /> },
   { id: "settings", label: "Settings", icon: <Settings size={16} /> },
+  { id: "plans", label: "Plans & Activation", icon: <Lock size={16} /> },
+  { id: "plans", label: "Plans & Activation", icon: <Lock size={16} /> },
 ];
 
 async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
@@ -564,7 +567,7 @@ function CustomersScreen({ data, refresh }: { data: AppData; refresh: (payload?:
   );
 }
 
-function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
+function InvoicesScreen({ data, refresh, onNavigate }: { data: AppData; refresh: (payload?: AppData) => void; onNavigate: (screen: ScreenId) => void }) {
   const [form, setForm] = useState({ customerName: "", dueDate: "", item: "", quantity: 1, unitPrice: 0, amountPaid: 0 });
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(data.invoices[0] || null);
   const [saveError, setSaveError] = useState("");
@@ -691,13 +694,12 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
               <p className="text-sm text-red-600 font-medium mb-1">
                 You've reached your monthly limit of {invoiceLimit} invoices.
               </p>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium border bg-[#005932] text-white border-transparent hover:bg-[#004d2a] shadow-sm opacity-50 cursor-not-allowed"
-                disabled
+              <Btn
+                variant="primary"
+                onClick={() => setScreen("plans")}
               >
                 Upgrade to Pro
-              </button>
+              </Btn>
             </div>
           )}
         </div>
@@ -913,7 +915,7 @@ import {
   Line,
 } from "recharts";
 
-function ReportsScreen({ data }: { data: AppData }) {
+function ReportsScreen({ data, onNavigate }: { data: AppData; onNavigate: (screen: ScreenId) => void }) {
   const [selectedReport, setSelectedReport] = useState<string>("overview");
 
   // ========== CALCULATIONS ==========
@@ -1099,13 +1101,12 @@ function ReportsScreen({ data }: { data: AppData }) {
               </li>
             </ul>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-medium border bg-[#005932] text-white border-transparent hover:bg-[#004d2a] shadow-sm cursor-not-allowed opacity-70"
-            disabled
+          <Btn
+            variant="primary"
+            onClick={() => onNavigate("plans")}
           >
             Upgrade to Pro
-          </button>
+          </Btn>
           <p className="text-xs text-[#1a1c1b]/40 mt-2">Coming soon</p>
         </div>
       ) : (
@@ -1877,6 +1878,412 @@ function KnowledgeScreen({ data, refresh }: { data: AppData; refresh: (payload?:
 }
 
 
+function PlansScreen({ data }: { data: AppData }) {
+  const [licenseCode, setLicenseCode] = useState("");
+  const [activationMessage, setActivationMessage] = useState("");
+  const [activationError, setActivationError] = useState("");
+
+  const isDev = import.meta.env.DEV;
+
+  const getPlanLabel = () => {
+    if (data.plan === "pro" && data.subscriptionExpiresAt) {
+      const now = new Date();
+      const expiresAt = new Date(data.subscriptionExpiresAt);
+      if (now < expiresAt) return "Pro";
+    }
+    if (data.hasPremiumAccess) return "Trial";
+    return "Free";
+  };
+
+  const planLabel = getPlanLabel();
+  const isProActive = planLabel === "Pro";
+  const isTrial = planLabel === "Trial";
+  const isFree = planLabel === "Free";
+
+  const handleGetProCode = async () => {
+    const url = "https://marketos.app/upgrade";
+    if (typeof window.marketos?.openExternal === "function") {
+      const result = await window.marketos.openExternal(url);
+      if (!result.success) {
+        setActivationError(result.error || "Failed to open upgrade page.");
+      }
+    } else {
+      // Fallback for browser dev mode
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleActivate = () => {
+    const code = licenseCode.trim();
+    if (!code) {
+      setActivationError("Enter your MarketOS Pro activation code.");
+      setActivationMessage("");
+      return;
+    }
+    setActivationMessage("Online license activation will be available when the MarketOS licensing service is connected.");
+    setActivationError("");
+    setLicenseCode("");
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "—";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "—";
+      return d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "—";
+    }
+  };
+
+  const trialDaysRemaining = (() => {
+    if (!data.hasPremiumAccess || data.plan === "pro") return 0;
+    const now = new Date();
+    const trialEnd = new Date(data.trialEndsAt);
+    const diffMs = trialEnd.getTime() - now.getTime();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  })();
+
+  const invoicesUsed = data.invoiceCountThisMonth;
+  const invoiceLimit = 15;
+  const invoicesRemaining = Math.max(0, invoiceLimit - invoicesUsed);
+
+  return (
+    <div className="space-y-5">
+      <Header title="Plans & Activation" subtitle="Manage your MarketOS subscription and activate Pro." />
+
+      {/* Current Plan Card */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Current Plan</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Plan</p>
+            <p className={`text-lg font-semibold ${isProActive ? "text-[#005932]" : isTrial ? "text-[#795900]" : "text-[#1a1c1b]"}`}>
+              {planLabel}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Premium Access</p>
+            <p className={`text-lg font-semibold ${data.hasPremiumAccess ? "text-[#005932]" : "text-red-600"}`}>
+              {data.hasPremiumAccess ? "Active" : "Inactive"}
+            </p>
+          </div>
+          {data.trialEndsAt && (
+            <div>
+              <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Trial Expiry</p>
+              <p className="text-lg font-semibold text-[#1a1c1b]">
+                {formatDate(data.trialEndsAt)}
+                {trialDaysRemaining > 0 && <span className="text-sm text-[#005932] ml-1">({trialDaysRemaining}d)</span>}
+              </p>
+            </div>
+          )}
+          {data.subscriptionExpiresAt && (
+            <div>
+              <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Subscription Expiry</p>
+              <p className="text-lg font-semibold text-[#1a1c1b]">{formatDate(data.subscriptionExpiresAt)}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Invoices This Month</p>
+            <p className="text-lg font-semibold text-[#1a1c1b]">
+              {invoicesUsed} / {invoiceLimit}
+              {!data.hasPremiumAccess && invoicesRemaining > 0 && (
+                <span className="text-sm text-[#1a1c1b]/60 ml-1">({invoicesRemaining} remaining)</span>
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Plan Comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isFree ? "border-[#005932] ring-2 ring-[#005932]/20" : "border-[#1a1c1b]/8"}`}>
+          <h3 className="text-lg font-semibold text-[#1a1c1b] mb-2">Free</h3>
+          <ul className="space-y-2 text-sm text-[#1a1c1b]/70">
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Sales</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Inventory</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Customers</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Business Overview report</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> 15 invoices per calendar month</li>
+          </ul>
+          {isFree && <div className="mt-3 text-xs text-[#005932] font-medium">Your current plan</div>}
+        </div>
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isProActive ? "border-[#005932] ring-2 ring-[#005932]/20" : "border-[#1a1c1b]/8"}`}>
+          <h3 className="text-lg font-semibold text-[#1a1c1b] mb-2">Pro</h3>
+          <ul className="space-y-2 text-sm text-[#1a1c1b]/70">
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Everything in Free</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Unlimited invoices</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> All reports</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Future premium features</li>
+          </ul>
+          {isProActive && <div className="mt-3 text-xs text-[#005932] font-medium">Your current plan</div>}
+        </div>
+      </div>
+
+      {/* Upgrade Area */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Upgrade</h2>
+        {isProActive ? (
+          <div className="flex items-center gap-2">
+            <CheckCircle size={16} className="text-[#005932]" />
+            <span className="text-sm font-medium text-[#005932]">Pro Active</span>
+          </div>
+        ) : (
+          <Btn onClick={handleGetProCode} icon={<Lock size={14} />}>
+            Get Pro Code
+          </Btn>
+        )}
+      </div>
+
+      {/* Activation Form */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Activate Pro</h2>
+        <div className="space-y-3">
+          <Field label="License Code">
+            <input
+              className={inputClass}
+              value={licenseCode}
+              onChange={(e) => setLicenseCode(e.target.value)}
+              placeholder="Enter your activation code"
+            />
+          </Field>
+          <Btn onClick={handleActivate} icon={<Lock size={14} />}>
+            Activate Pro
+          </Btn>
+          {activationError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              {activationError}
+            </div>
+          )}
+          {activationMessage && (
+            <div className="p-3 rounded-xl bg-[#005932]/5 border border-[#005932]/20 text-sm text-[#005932]">
+              {activationMessage}
+            </div>
+          )}
+          <p className="text-xs text-[#1a1c1b]/40">
+            An internet connection is only required when activating or renewing Pro. After activation, MarketOS continues to work offline until the subscription expires.
+          </p>
+        </div>
+      </div>
+
+      {/* Developer Tools Note */}
+      {isDev && (
+        <div className="bg-[#795900]/5 border border-[#795900]/20 rounded-xl p-4 text-sm text-[#795900]">
+          Use Developer Tools in Settings to test Pro activation and expiry.
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlansScreen({ data }: { data: AppData }) {
+  const [licenseCode, setLicenseCode] = useState("");
+  const [activationMessage, setActivationMessage] = useState("");
+  const [activationError, setActivationError] = useState("");
+
+  const isDev = import.meta.env.DEV;
+
+  const getPlanLabel = () => {
+    if (data.plan === "pro" && data.subscriptionExpiresAt) {
+      const now = new Date();
+      const expiresAt = new Date(data.subscriptionExpiresAt);
+      if (now < expiresAt) return "Pro";
+    }
+    if (data.hasPremiumAccess) return "Trial";
+    return "Free";
+  };
+
+  const planLabel = getPlanLabel();
+  const isProActive = planLabel === "Pro";
+  const isTrial = planLabel === "Trial";
+  const isFree = planLabel === "Free";
+
+  const handleGetProCode = async () => {
+    const url = "https://marketos.app/upgrade";
+    if (typeof window.marketos?.openExternal === "function") {
+      const result = await window.marketos.openExternal(url);
+      if (!result.success) {
+        setActivationError(result.error || "Failed to open upgrade page.");
+      }
+    } else {
+      // Fallback for browser dev mode
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleActivate = () => {
+    const code = licenseCode.trim();
+    if (!code) {
+      setActivationError("Enter your MarketOS Pro activation code.");
+      setActivationMessage("");
+      return;
+    }
+    setActivationMessage("Online license activation will be available when the MarketOS licensing service is connected.");
+    setActivationError("");
+    setLicenseCode("");
+  };
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return "—";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "—";
+      return d.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return "—";
+    }
+  };
+
+  const trialDaysRemaining = (() => {
+    if (!data.hasPremiumAccess || data.plan === "pro") return 0;
+    const now = new Date();
+    const trialEnd = new Date(data.trialEndsAt);
+    const diffMs = trialEnd.getTime() - now.getTime();
+    if (diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  })();
+
+  const invoicesUsed = data.invoiceCountThisMonth;
+  const invoiceLimit = 15;
+  const invoicesRemaining = Math.max(0, invoiceLimit - invoicesUsed);
+
+  return (
+    <div className="space-y-5">
+      <Header title="Plans & Activation" subtitle="Manage your MarketOS subscription and activate Pro." />
+
+      {/* Current Plan Card */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Current Plan</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Plan</p>
+            <p className={`text-lg font-semibold ${isProActive ? "text-[#005932]" : isTrial ? "text-[#795900]" : "text-[#1a1c1b]"}`}>
+              {planLabel}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Premium Access</p>
+            <p className={`text-lg font-semibold ${data.hasPremiumAccess ? "text-[#005932]" : "text-red-600"}`}>
+              {data.hasPremiumAccess ? "Active" : "Inactive"}
+            </p>
+          </div>
+          {data.trialEndsAt && (
+            <div>
+              <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Trial Expiry</p>
+              <p className="text-lg font-semibold text-[#1a1c1b]">
+                {formatDate(data.trialEndsAt)}
+                {trialDaysRemaining > 0 && <span className="text-sm text-[#005932] ml-1">({trialDaysRemaining}d)</span>}
+              </p>
+            </div>
+          )}
+          {data.subscriptionExpiresAt && (
+            <div>
+              <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Subscription Expiry</p>
+              <p className="text-lg font-semibold text-[#1a1c1b]">{formatDate(data.subscriptionExpiresAt)}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-xs text-[#1a1c1b]/50 uppercase tracking-wider mb-1">Invoices This Month</p>
+            <p className="text-lg font-semibold text-[#1a1c1b]">
+              {invoicesUsed} / {invoiceLimit}
+              {!data.hasPremiumAccess && invoicesRemaining > 0 && (
+                <span className="text-sm text-[#1a1c1b]/60 ml-1">({invoicesRemaining} remaining)</span>
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Plan Comparison */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isFree ? "border-[#005932] ring-2 ring-[#005932]/20" : "border-[#1a1c1b]/8"}`}>
+          <h3 className="text-lg font-semibold text-[#1a1c1b] mb-2">Free</h3>
+          <ul className="space-y-2 text-sm text-[#1a1c1b]/70">
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Sales</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Inventory</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Customers</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Business Overview report</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> 15 invoices per calendar month</li>
+          </ul>
+          {isFree && <div className="mt-3 text-xs text-[#005932] font-medium">Your current plan</div>}
+        </div>
+        <div className={`bg-white rounded-xl border p-5 shadow-sm ${isProActive ? "border-[#005932] ring-2 ring-[#005932]/20" : "border-[#1a1c1b]/8"}`}>
+          <h3 className="text-lg font-semibold text-[#1a1c1b] mb-2">Pro</h3>
+          <ul className="space-y-2 text-sm text-[#1a1c1b]/70">
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Everything in Free</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Unlimited invoices</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> All reports</li>
+            <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#005932]" /> Future premium features</li>
+          </ul>
+          {isProActive && <div className="mt-3 text-xs text-[#005932] font-medium">Your current plan</div>}
+        </div>
+      </div>
+
+      {/* Upgrade Area */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Upgrade</h2>
+        {isProActive ? (
+          <div className="flex items-center gap-2">
+            <CheckCircle size={16} className="text-[#005932]" />
+            <span className="text-sm font-medium text-[#005932]">Pro Active</span>
+          </div>
+        ) : (
+          <Btn onClick={handleGetProCode} icon={<Lock size={14} />}>
+            Get Pro Code
+          </Btn>
+        )}
+      </div>
+
+      {/* Activation Form */}
+      <div className="bg-white rounded-xl border border-[#1a1c1b]/8 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider mb-3">Activate Pro</h2>
+        <div className="space-y-3">
+          <Field label="License Code">
+            <input
+              className={inputClass}
+              value={licenseCode}
+              onChange={(e) => setLicenseCode(e.target.value)}
+              placeholder="Enter your activation code"
+            />
+          </Field>
+          <Btn onClick={handleActivate} icon={<Lock size={14} />}>
+            Activate Pro
+          </Btn>
+          {activationError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+              {activationError}
+            </div>
+          )}
+          {activationMessage && (
+            <div className="p-3 rounded-xl bg-[#005932]/5 border border-[#005932]/20 text-sm text-[#005932]">
+              {activationMessage}
+            </div>
+          )}
+          <p className="text-xs text-[#1a1c1b]/40">
+            An internet connection is only required when activating or renewing Pro. After activation, MarketOS continues to work offline until the subscription expires.
+          </p>
+        </div>
+      </div>
+
+      {/* Developer Tools Note */}
+      {isDev && (
+        <div className="bg-[#795900]/5 border border-[#795900]/20 rounded-xl p-4 text-sm text-[#795900]">
+          Use Developer Tools in Settings to test Pro activation and expiry.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
   const [form, setForm] = useState(data.settings);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -2390,11 +2797,13 @@ export default function App() {
       case "expenses": return <ExpensesScreen data={data} refresh={(payload) => run(() => refresh(payload), "Expense saved.")} />;
       case "inventory": return <InventoryScreen data={data} refresh={(payload) => run(() => refresh(payload), "Inventory updated.")} />;
       case "customers": return <CustomersScreen data={data} refresh={(payload) => run(() => refresh(payload), "Customer updated.")} />;
-      case "invoices": return <InvoicesScreen data={data} refresh={(payload) => run(() => refresh(payload), "Invoice saved.")} />;
-      case "reports": return <ReportsScreen data={data} />;
+      case "invoices": return <InvoicesScreen data={data} refresh={(payload) => run(() => refresh(payload), "Invoice saved.")} onNavigate={setScreen} />;
+      case "reports": return <ReportsScreen data={data} onNavigate={setScreen} />;
       case "coach": return <CoachScreen />;
       case "knowledge": return <KnowledgeScreen data={data} refresh={(payload) => run(() => refresh(payload), "Knowledge updated.")} />;
       case "settings": return <SettingsScreen data={data} refresh={(payload) => run(() => refresh(payload), "Settings saved.")} />;
+      case "plans": return <PlansScreen data={data} />;
+      case "plans": return <PlansScreen data={data} />;
       default: return null;
     }
   };
