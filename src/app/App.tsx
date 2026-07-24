@@ -566,6 +566,8 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(data.invoices[0] || null);
   const [saveError, setSaveError] = useState("");
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "2-days" | "3-days" | "7-days">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const subtotal = form.quantity * form.unitPrice;
 
   const hasPremium = data.hasPremiumAccess;
@@ -587,7 +589,7 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
 
   // Date filter logic
   const todayStr = new Date().toISOString().slice(0, 10);
-  const filteredInvoices = useMemo(() => {
+  const dateFilteredInvoices = useMemo(() => {
     if (dateFilter === "all") return data.invoices;
     const now = new Date();
     const startDate = new Date(now);
@@ -606,6 +608,26 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
       return inv.date >= startStr && inv.date <= todayStr;
     });
   }, [data.invoices, dateFilter, todayStr]);
+
+  // Search filter
+  const searchFilteredInvoices = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return dateFilteredInvoices;
+    return dateFilteredInvoices.filter((inv) => {
+      const number = (inv.number || "").toLowerCase();
+      const customer = (inv.customerName || "").toLowerCase();
+      const item = (inv.item || "").toLowerCase();
+      return number.includes(q) || customer.includes(q) || item.includes(q);
+    });
+  }, [dateFilteredInvoices, searchQuery]);
+
+  // Status filter
+  const finalFilteredInvoices = useMemo(() => {
+    if (statusFilter === "all") return searchFilteredInvoices;
+    return searchFilteredInvoices.filter((inv) => inv.status === statusFilter);
+  }, [searchFilteredInvoices, statusFilter]);
+
+  const hasActiveFilters = dateFilter !== "all" || searchQuery.trim() !== "" || statusFilter !== "all";
 
   const save = async () => {
     try {
@@ -684,29 +706,63 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
           <h2 className="text-sm font-semibold text-[#1a1c1b]/50 uppercase tracking-wider">Invoice History</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#1a1c1b]/40">
-              {filteredInvoices.length} invoice{filteredInvoices.length !== 1 ? "s" : ""}
+              {finalFilteredInvoices.length} invoice{finalFilteredInvoices.length !== 1 ? "s" : ""}
             </span>
+            <input
+              className={`${inputClass} w-36 text-xs`}
+              placeholder="Search invoice number or customer"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
             <select
-              className={`${inputClass} w-32 text-xs`}
+              className={`${inputClass} w-28 text-xs`}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="all">All statuses</option>
+              <option value="Saved">Saved</option>
+              <option value="Paid">Paid</option>
+              <option value="Unpaid">Unpaid</option>
+              <option value="Overdue">Overdue</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+            <select
+              className={`${inputClass} w-28 text-xs`}
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value as typeof dateFilter)}
             >
-              <option value="all">All</option>
+              <option value="all">All dates</option>
               <option value="today">Today</option>
               <option value="2-days">Last 2 days</option>
               <option value="3-days">Last 3 days</option>
               <option value="7-days">Last 7 days</option>
             </select>
-          </div>
-        </div>
-        {filteredInvoices.length === 0 ? (
-          <div className="text-center py-6">
-            <p className="text-sm text-[#1a1c1b]/40 mb-3">No invoices found for this period.</p>
-            {dateFilter !== "all" && (
-              <Btn variant="secondary" onClick={() => setDateFilter("all")}>
-                All invoices
+            {hasActiveFilters && (
+              <Btn
+                variant="ghost"
+                onClick={() => {
+                  setSearchQuery("");
+                  setDateFilter("all");
+                  setStatusFilter("all");
+                }}
+              >
+                Clear filters
               </Btn>
             )}
+          </div>
+        </div>
+        {data.invoices.length === 0 ? (
+          <p className="text-sm text-[#1a1c1b]/40">No invoices yet. Create one using the form below.</p>
+        ) : finalFilteredInvoices.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-[#1a1c1b]/40 mb-3">No invoices match your filters.</p>
+            <Btn variant="secondary" onClick={() => {
+              setSearchQuery("");
+              setDateFilter("all");
+              setStatusFilter("all");
+            }}>
+              Clear filters
+            </Btn>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -720,7 +776,7 @@ function InvoicesScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1c1b]/5">
-              {filteredInvoices.map((inv) => {
+              {finalFilteredInvoices.map((inv) => {
                 const total = inv.quantity * inv.unitPrice;
                 return (
                   <tr
