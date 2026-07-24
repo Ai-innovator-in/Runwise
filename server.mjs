@@ -4343,6 +4343,64 @@ async function handleApi(req, res) {
     );
   }
 
+  // ========== DEVELOPMENT ENDPOINT ==========
+  if (
+    req.method === "POST" &&
+    url.pathname === "/api/dev/subscription-state"
+  ) {
+    if (process.env.NODE_ENV === "production") {
+      return send(res, 404, { error: "API route not found." });
+    }
+
+    const action = String(body.action || "").trim();
+
+    switch (action) {
+      case "start-trial": {
+        const now = new Date();
+        const trialEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        data.plan = "free";
+        data.trialStartedAt = now.toISOString();
+        data.trialEndsAt = trialEnd.toISOString();
+        break;
+      }
+      case "expire-trial": {
+        data.plan = "free";
+        // Keep trialStartedAt unchanged if it exists
+        if (!data.trialStartedAt) {
+          data.trialStartedAt = new Date().toISOString();
+        }
+        // Set trialEndsAt to a past timestamp
+        data.trialEndsAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        break;
+      }
+      case "set-free": {
+        data.plan = "free";
+        // Ensure trialEndsAt is in the past so hasPremiumAccess becomes false
+        data.trialEndsAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        break;
+      }
+      case "set-pro": {
+        data.plan = "pro";
+        // Do not delete or reset trial timestamps
+        break;
+      }
+      case "reset-invoice-count": {
+        const currentMonth = TODAY.slice(0, 7); // "YYYY-MM"
+        data.invoiceCountThisMonth = 0;
+        data.invoiceMonth = currentMonth;
+        break;
+      }
+      default:
+        return send(res, 400, {
+          error: `Unsupported action "${action}". Supported actions: start-trial, expire-trial, set-free, set-pro, reset-invoice-count.`,
+        });
+    }
+
+    await saveDb(db);
+
+    return send(res, 200, bootstrap(user));
+  }
+
 
   return send(res, 404, {
     error: "API route not found.",
