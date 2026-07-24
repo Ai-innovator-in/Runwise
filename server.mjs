@@ -190,6 +190,9 @@ function emptyBusiness({ businessName, location, industry, businessType, targetC
     plan: "free",
     trialStartedAt: now.toISOString(),
     trialEndsAt: trialEnd.toISOString(),
+    subscriptionStartedAt: null,
+    subscriptionExpiresAt: null,
+    licenseActivationId: null,
     invoiceCountThisMonth: 0,
     invoiceMonth: "",
     settings: {
@@ -513,7 +516,21 @@ function summary(data) {
 
 function hasPremiumAccess(data) {
   // Pro users always have premium access
-  if (data.plan === "pro") return true;
+  if (data.plan === "pro") {
+    // Check paid subscription expiry
+    if (data.subscriptionExpiresAt) {
+      const now = new Date();
+      const expiresAt = new Date(data.subscriptionExpiresAt);
+      if (now < expiresAt) return true;
+    }
+    // If no subscriptionExpiresAt, fall back to trial check
+    if (data.trialEndsAt) {
+      const now = new Date();
+      const trialEnd = new Date(data.trialEndsAt);
+      if (now < trialEnd) return true;
+    }
+    return false;
+  }
   // Check if trial is active
   if (data.trialEndsAt) {
     const now = new Date();
@@ -532,6 +549,16 @@ function bootstrap(user) {
   data.trialEndsAt ??= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
   data.invoiceCountThisMonth = Number(data.invoiceCountThisMonth) ?? 0;
   data.invoiceMonth ??= "";
+
+  // Ensure subscription fields exist
+  data.subscriptionStartedAt ??= null;
+  data.subscriptionExpiresAt ??= null;
+  data.licenseActivationId ??= null;
+
+  // Ensure installationId exists (backend only)
+  if (!data.installationId) {
+    data.installationId = crypto.randomUUID();
+  }
 
   const recentActivity = [
     ...data.sales.map((sale) => ({
@@ -574,6 +601,9 @@ function bootstrap(user) {
     plan: data.plan,
     trialStartedAt: data.trialStartedAt,
     trialEndsAt: data.trialEndsAt,
+    subscriptionStartedAt: data.subscriptionStartedAt,
+    subscriptionExpiresAt: data.subscriptionExpiresAt,
+    licenseActivationId: data.licenseActivationId,
     hasPremiumAccess: hasPremiumAccess(data),
     invoiceCountThisMonth: data.invoiceCountThisMonth,
     invoiceMonth: data.invoiceMonth,
@@ -4390,9 +4420,24 @@ async function handleApi(req, res) {
         data.invoiceMonth = currentMonth;
         break;
       }
+      case "activate-test-pro": {
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        data.plan = "pro";
+        data.subscriptionStartedAt = now.toISOString();
+        data.subscriptionExpiresAt = expiresAt.toISOString();
+        data.licenseActivationId = "dev-test-activation";
+        break;
+      }
+      case "expire-paid-pro": {
+        // Keep plan and subscription history, set expiry to one minute in the past
+        const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+        data.subscriptionExpiresAt = oneMinuteAgo.toISOString();
+        break;
+      }
       default:
         return send(res, 400, {
-          error: `Unsupported action "${action}". Supported actions: start-trial, expire-trial, set-free, set-pro, reset-invoice-count.`,
+          error: `Unsupported action "${action}". Supported actions: start-trial, expire-trial, set-free, set-pro, reset-invoice-count, activate-test-pro, expire-paid-pro.`,
         });
     }
 

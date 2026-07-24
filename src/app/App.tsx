@@ -72,6 +72,9 @@ type AppData = {
   plan: "free" | "pro";
   trialStartedAt: string;
   trialEndsAt: string;
+  subscriptionStartedAt: string | null;
+  subscriptionExpiresAt: string | null;
+  licenseActivationId: string | null;
   hasPremiumAccess: boolean;
   invoiceCountThisMonth: number;
   invoiceMonth: string;
@@ -1978,6 +1981,12 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
               <p className="text-[#1a1c1b]/50 uppercase tracking-wider mb-0.5">Invoices This Month</p>
               <p className="font-mono text-[#1a1c1b]">{data.invoiceCountThisMonth}</p>
             </div>
+            <div className="p-2 rounded-lg bg-[#f9f9f6] border border-[#1a1c1b]/5">
+              <p className="text-[#1a1c1b]/50 uppercase tracking-wider mb-0.5">Subscription Expires</p>
+              <p className="font-mono text-[#1a1c1b] text-[11px]">
+                {data.subscriptionExpiresAt ? new Date(data.subscriptionExpiresAt).toLocaleDateString() : "—"}
+              </p>
+            </div>
           </div>
 
           {/* Action buttons */}
@@ -2018,6 +2027,20 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
               disabled={devLoading !== null}
             >
               {devLoading === "reset-invoice-count" ? "..." : "Reset Invoice Count"}
+            </Btn>
+            <Btn
+              variant="secondary"
+              onClick={() => devAction("activate-test-pro")}
+              disabled={devLoading !== null}
+            >
+              {devLoading === "activate-test-pro" ? "..." : "Activate Test Pro — 30 Days"}
+            </Btn>
+            <Btn
+              variant="secondary"
+              onClick={() => devAction("expire-paid-pro")}
+              disabled={devLoading !== null}
+            >
+              {devLoading === "expire-paid-pro" ? "..." : "Expire Paid Pro"}
             </Btn>
           </div>
 
