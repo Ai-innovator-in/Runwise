@@ -2102,14 +2102,6 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   };
 
 
-  const trialDaysRemaining = (() => {
-    if (!data.hasPremiumAccess || data.plan === "pro") return 0;
-    const now = new Date();
-    const trialEnd = new Date(data.trialEndsAt);
-    const diffMs = trialEnd.getTime() - now.getTime();
-    if (diffMs <= 0) return 0;
-    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  })();
 
   return (
     <div className="space-y-5">
