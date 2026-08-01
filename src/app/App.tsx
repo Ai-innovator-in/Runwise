@@ -7,7 +7,6 @@ import {
   BookOpen,
   CheckCircle,
   ChevronRight,
-  Cpu,
   Download,
   FileText,
   LayoutDashboard,
@@ -1882,7 +1881,6 @@ function PlansScreen({ data, refresh }: { data: AppData; refresh: (payload?: App
   const [activationMessage, setActivationMessage] = useState("");
   const [activationError, setActivationError] = useState("");
 
-  const isDev = import.meta.env.DEV;
 
   const getPlanLabel = () => {
     if (data.plan === "pro" && data.subscriptionExpiresAt) {
@@ -1950,14 +1948,6 @@ function PlansScreen({ data, refresh }: { data: AppData; refresh: (payload?: App
     }
   };
 
-  const trialDaysRemaining = (() => {
-    if (!data.hasPremiumAccess || data.plan === "pro") return 0;
-    const now = new Date();
-    const trialEnd = new Date(data.trialEndsAt);
-    const diffMs = trialEnd.getTime() - now.getTime();
-    if (diffMs <= 0) return 0;
-    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  })();
 
   const invoicesUsed = data.invoiceCountThisMonth;
   const invoiceLimit = 15;
@@ -2081,12 +2071,6 @@ function PlansScreen({ data, refresh }: { data: AppData; refresh: (payload?: App
         </div>
       </div>
 
-      {/* Developer Tools Note */}
-      {isDev && (
-        <div className="bg-[#795900]/5 border border-[#795900]/20 rounded-xl p-4 text-sm text-[#795900]">
-          Use Developer Tools in Settings to test Pro activation and expiry.
-        </div>
-      )}
     </div>
   );
 }
@@ -2097,10 +2081,6 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
   const [deleteError, setDeleteError] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Developer tools state
-  const [devLoading, setDevLoading] = useState<string | null>(null);
-  const [devError, setDevError] = useState("");
-  const [devSuccess, setDevSuccess] = useState("");
 
   const save = async () => refresh(await api<AppData>("/api/settings", { method: "POST", body: JSON.stringify(form) }));
 
@@ -2121,26 +2101,6 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
     }
   };
 
-  const devAction = async (action: string) => {
-    try {
-      setDevLoading(action);
-      setDevError("");
-      setDevSuccess("");
-      const result = await api<AppData>("/api/dev/subscription-state", {
-        method: "POST",
-        body: JSON.stringify({ action }),
-      });
-      refresh(result);
-      setDevSuccess(`Action "${action}" completed successfully.`);
-      setTimeout(() => setDevSuccess(""), 3000);
-    } catch (err) {
-      setDevError(err instanceof Error ? err.message : "Developer action failed.");
-    } finally {
-      setDevLoading(null);
-    }
-  };
-
-  const isDev = import.meta.env.DEV;
 
   const trialDaysRemaining = (() => {
     if (!data.hasPremiumAccess || data.plan === "pro") return 0;
@@ -2161,115 +2121,6 @@ function SettingsScreen({ data, refresh }: { data: AppData; refresh: (payload?: 
         <div className="col-span-2 flex gap-2"><Btn onClick={save}>Save Settings</Btn><Badge label="Cloud Sync Disabled" variant="neutral" /></div>
       </div>
 
-      {/* Developer Tools Section */}
-      {isDev && (
-        <div className="bg-white rounded-xl border border-[#795900]/30 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded bg-[#795900]/10 flex items-center justify-center">
-              <Cpu size={14} className="text-[#795900]" />
-            </div>
-            <h2 className="text-sm font-semibold text-[#795900] uppercase tracking-wider">Developer Tools</h2>
-            <Badge label="Testing only — hidden in production builds" variant="warning" />
-          </div>
-
-          {/* Current state display */}
-          <div className="grid grid-cols-4 gap-3 mb-4 text-xs">
-            <div className="p-2 rounded-lg bg-[#f9f9f6] border border-[#1a1c1b]/5">
-              <p className="text-[#1a1c1b]/50 uppercase tracking-wider mb-0.5">Plan</p>
-              <p className="font-semibold text-[#1a1c1b]">{data.plan === "pro" ? "Pro" : "Free"}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-[#f9f9f6] border border-[#1a1c1b]/5">
-              <p className="text-[#1a1c1b]/50 uppercase tracking-wider mb-0.5">Premium Access</p>
-              <p className={`font-semibold ${data.hasPremiumAccess ? "text-[#005932]" : "text-red-600"}`}>
-                {data.hasPremiumAccess ? "Active" : "Inactive"}
-              </p>
-            </div>
-            <div className="p-2 rounded-lg bg-[#f9f9f6] border border-[#1a1c1b]/5">
-              <p className="text-[#1a1c1b]/50 uppercase tracking-wider mb-0.5">Trial Ends</p>
-              <p className="font-mono text-[#1a1c1b] text-[11px]">
-                {data.trialEndsAt ? new Date(data.trialEndsAt).toLocaleDateString() : "—"}
-                {trialDaysRemaining > 0 && <span className="text-[#005932] ml-1">({trialDaysRemaining}d)</span>}
-              </p>
-            </div>
-            <div className="p-2 rounded-lg bg-[#f9f9f6] border border-[#1a1c1b]/5">
-              <p className="text-[#1a1c1b]/50 uppercase tracking-wider mb-0.5">Invoices This Month</p>
-              <p className="font-mono text-[#1a1c1b]">{data.invoiceCountThisMonth}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-[#f9f9f6] border border-[#1a1c1b]/5">
-              <p className="text-[#1a1c1b]/50 uppercase tracking-wider mb-0.5">Subscription Expires</p>
-              <p className="font-mono text-[#1a1c1b] text-[11px]">
-                {data.subscriptionExpiresAt ? new Date(data.subscriptionExpiresAt).toLocaleDateString() : "—"}
-              </p>
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-2">
-            <Btn
-              variant="secondary"
-              onClick={() => devAction("start-trial")}
-              disabled={devLoading !== null}
-              icon={<Zap size={14} />}
-            >
-              {devLoading === "start-trial" ? "..." : "Start 7-Day Trial"}
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => devAction("expire-trial")}
-              disabled={devLoading !== null}
-              icon={<X size={14} />}
-            >
-              {devLoading === "expire-trial" ? "..." : "Expire Trial"}
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => devAction("set-free")}
-              disabled={devLoading !== null}
-            >
-              {devLoading === "set-free" ? "..." : "Set Free Plan"}
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => devAction("set-pro")}
-              disabled={devLoading !== null}
-            >
-              {devLoading === "set-pro" ? "..." : "Set Pro Plan"}
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => devAction("reset-invoice-count")}
-              disabled={devLoading !== null}
-            >
-              {devLoading === "reset-invoice-count" ? "..." : "Reset Invoice Count"}
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => devAction("activate-test-pro")}
-              disabled={devLoading !== null}
-            >
-              {devLoading === "activate-test-pro" ? "..." : "Activate Test Pro — 30 Days"}
-            </Btn>
-            <Btn
-              variant="secondary"
-              onClick={() => devAction("expire-paid-pro")}
-              disabled={devLoading !== null}
-            >
-              {devLoading === "expire-paid-pro" ? "..." : "Expire Paid Pro"}
-            </Btn>
-          </div>
-
-          {devError && (
-            <div className="mt-3 p-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
-              {devError}
-            </div>
-          )}
-          {devSuccess && (
-            <div className="mt-3 p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">
-              {devSuccess}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Account Deletion Section */}
       <div className="bg-white rounded-xl border border-red-200 p-5 shadow-sm">
