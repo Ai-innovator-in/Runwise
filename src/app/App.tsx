@@ -2609,7 +2609,7 @@ export default function App() {
       case "coach": return <CoachScreen />;
       case "knowledge": return <KnowledgeScreen data={data} refresh={(payload) => run(() => refresh(payload), "Knowledge updated.")} />;
       case "settings": return <SettingsScreen data={data} refresh={(payload) => run(() => refresh(payload), "Settings saved.")} />;
-      case "plans": return <PlansScreen data={data} refresh={(payload) => run(() => refresh(payload), "Settings saved.")} />;
+      case "plans": return <PlansScreen data={data} refresh={refresh} />;
       default: return null;
     }
   };
