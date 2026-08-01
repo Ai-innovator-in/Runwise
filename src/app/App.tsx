@@ -1877,7 +1877,7 @@ function KnowledgeScreen({ data, refresh }: { data: AppData; refresh: (payload?:
 }
 
 
-function PlansScreen({ data }: { data: AppData }) {
+function PlansScreen({ data, refresh }: { data: AppData; refresh: (payload?: AppData) => void }) {
   const [licenseCode, setLicenseCode] = useState("");
   const [activationMessage, setActivationMessage] = useState("");
   const [activationError, setActivationError] = useState("");
@@ -1912,16 +1912,27 @@ function PlansScreen({ data }: { data: AppData }) {
     }
   };
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     const code = licenseCode.trim();
     if (!code) {
       setActivationError("Enter your MarketOS Pro activation code.");
       setActivationMessage("");
       return;
     }
-    setActivationMessage("Online license activation will be available when the MarketOS licensing service is connected.");
-    setActivationError("");
-    setLicenseCode("");
+    try {
+      setActivationError("");
+      setActivationMessage("");
+      const updatedData = await api<AppData>("/api/license/activate", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+      });
+      refresh(updatedData);
+      setActivationMessage("Pro activated successfully.");
+      setLicenseCode("");
+    } catch (err) {
+      setActivationError(err instanceof Error ? err.message : "Activation failed.");
+      setActivationMessage("");
+    }
   };
 
   const formatDate = (dateStr: string | null) => {
@@ -2598,7 +2609,7 @@ export default function App() {
       case "coach": return <CoachScreen />;
       case "knowledge": return <KnowledgeScreen data={data} refresh={(payload) => run(() => refresh(payload), "Knowledge updated.")} />;
       case "settings": return <SettingsScreen data={data} refresh={(payload) => run(() => refresh(payload), "Settings saved.")} />;
-      case "plans": return <PlansScreen data={data} />;
+      case "plans": return <PlansScreen data={data} refresh={(payload) => run(() => refresh(payload), "Settings saved.")} />;
       default: return null;
     }
   };

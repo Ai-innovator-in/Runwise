@@ -4289,6 +4289,76 @@ async function handleApi(req, res) {
 
   if (
     req.method === "POST" &&
+    url.pathname === "/api/license/activate"
+  ) {
+    const code = String(body.code || "").trim();
+    if (!code) {
+      throw Object.assign(
+        new Error("License code is required."),
+        { status: 400 },
+      );
+    }
+
+    // Ensure installationId exists
+    if (!data.installationId) {
+      data.installationId = crypto.randomUUID();
+    }
+
+    const activationEndpoint =
+      "https://" +
+      "api.runwisehq.online" +
+      "/api/v1/license-codes/activate";
+
+    let remote;
+    try {
+      remote = await fetch(activationEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          machine_id: data.installationId,
+        }),
+      });
+    } catch (error) {
+      throw Object.assign(
+        new Error(`Activation request failed: ${error.message}`),
+        { status: 502 },
+      );
+    }
+
+    let payload;
+    try {
+      payload = await remote.json();
+    } catch {
+      throw Object.assign(
+        new Error("Activation server returned invalid JSON."),
+        { status: 502 },
+      );
+    }
+
+    if (!remote.ok || !payload?.success) {
+      const message =
+        payload?.error ||
+        `Activation failed with status ${remote.status}.`;
+      throw Object.assign(new Error(message), { status: 400 });
+    }
+
+    // Success
+    data.plan = "pro";
+    data.subscriptionStartedAt = new Date().toISOString();
+    data.subscriptionExpiresAt = payload.expires_at;
+    data.licenseActivationId = payload.code;
+    data.hasPremiumAccess = true;
+
+    await saveDb(db);
+
+    return send(res, 200, bootstrap(user));
+  }
+
+  if (
+    req.method === "POST" &&
     url.pathname === "/api/coach"
   ) {
     // Business Coach is temporarily disabled while we build the business core.
