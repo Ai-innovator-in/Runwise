@@ -9,8 +9,8 @@
       "createdAt": "2026-07-12T15:26:15.902Z",
       "data": {
         "plan": "free",
-        "invoiceCountThisMonth": 0,
-        "invoiceMonth": "",
+        "invoiceCountThisMonth": 1,
+        "invoiceMonth": "2026-07",
         "settings": {
           "businessName": "Ed3hub",
           "location": "Lagos",
@@ -22,6 +22,14 @@
           "lastBackup": null
         },
         "inventory": [
+          {
+            "id": "prod_1785228368725_41b27016",
+            "name": "Rice",
+            "stock": 30,
+            "costPrice": 5000,
+            "sellPrice": 7000,
+            "damaged": 0
+          },
           {
             "id": "prod_1784732921743_44ce7260",
             "name": "Cement",
@@ -105,6 +113,15 @@
           }
         ],
         "sales": [
+          {
+            "id": "sale_1785228311444_8b33955c",
+            "date": "2026-07-28",
+            "product": "Rice",
+            "quantity": 2,
+            "unitPrice": 2500,
+            "channel": "Cash",
+            "customer": "Team"
+          },
           {
             "id": "sale_1784738058676_ebec31e6",
             "date": "2026-07-22",
@@ -206,6 +223,234 @@
         ],
         "invoices": [
           {
+            "id": "inv_1785228428512_aab80ac2",
+            "number": "INV-2026-0023",
+            "date": "2026-07-28",
+            "customerName": "Temi",
+            "dueDate": "2026-07-29",
+            "item": "rice",
+            "quantity": 1,
+            "unitPrice": 5000,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878019778_2877975e",
+            "number": "INV-2026-0022",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878018925_857c299b",
+            "number": "INV-2026-0021",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878017952_0bbfb8ed",
+            "number": "INV-2026-0020",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878015951_234da86d",
+            "number": "INV-2026-0019",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878006503_f718049e",
+            "number": "INV-2026-0018",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878006010_c9c769ea",
+            "number": "INV-2026-0017",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878005277_3194b1a2",
+            "number": "INV-2026-0016",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878004720_fcae0948",
+            "number": "INV-2026-0015",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878004248_be529e8d",
+            "number": "INV-2026-0014",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878003648_4ab35feb",
+            "number": "INV-2026-0013",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878003084_ae8fce0e",
+            "number": "INV-2026-0012",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878002221_9fe58c4b",
+            "number": "INV-2026-0011",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878001191_cc3bd1e7",
+            "number": "INV-2026-0010",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784878000204_4dc2df40",
+            "number": "INV-2026-0009",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784877996174_6e38cc08",
+            "number": "INV-2026-0008",
+            "date": "2026-07-24",
+            "customerName": "",
+            "dueDate": "2026-07-24",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784849928956_f63035fe",
+            "number": "INV-2026-0007",
+            "date": "2026-07-23",
+            "customerName": "Da",
+            "dueDate": "2026-07-24",
+            "item": "we",
+            "quantity": 1,
+            "unitPrice": 34,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784849892669_ccc424f1",
+            "number": "INV-2026-0006",
+            "date": "2026-07-23",
+            "customerName": "",
+            "dueDate": "2026-07-23",
+            "item": "",
+            "quantity": 1,
+            "unitPrice": 0,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
+            "id": "inv_1784849553214_1bf9f81d",
+            "number": "INV-2026-0005",
+            "date": "2026-07-23",
+            "customerName": "",
+            "dueDate": "2026-07-25",
+            "item": "egg",
+            "quantity": 1,
+            "unitPrice": 355,
+            "amountPaid": 0,
+            "status": "Saved"
+          },
+          {
             "id": "inv_1784757254933_b1c7f7e9",
             "number": "INV-2026-0004",
             "date": "2026-07-22",
@@ -256,6 +501,12 @@
         ],
         "notes": [
           {
+            "id": "note_1785228311443_51a9d5ac",
+            "note": "I sold two bags of rice to the team for 5000.",
+            "createdAt": "2026-07-28T08:45:11.443Z",
+            "status": "Saved"
+          },
+          {
             "id": "note_1784738058676_25d302f5",
             "note": "I sold two bags of cement for 5000 each",
             "createdAt": "2026-07-22T16:34:18.676Z",
@@ -298,22 +549,7 @@
             "status": "Saved"
           }
         ],
-        "knowledge": [
-          {
-            "id": "knowledge_1784734010306_4f044851",
-            "title": "Contractos",
-            "source": "manual",
-            "body": "Business sells construction materials in Lagos.\nMain customers are contractors.",
-            "createdAt": "2026-07-22T15:26:50.306Z"
-          },
-          {
-            "id": "knowledge_1784490919835_2b4c9ffc",
-            "title": "Musa",
-            "source": "manual",
-            "body": "# Musa Building Supplies\n\n## Business Overview\n\nMusa Building Supplies is a small retail and wholesale business based in **Lagos, Nigeria**. The business sells cement, roofing sheets, blocks, paint, nails, binding wire, and other construction materials.\n\n## Target Customers\n\nOur main customers are:\n\n- Building contractors\n- Artisans\n- Property developers\n- Landlords\n- Individuals working on home renovation projects\n\n## Products and Services\n\n- Cement\n- Roofing sheets\n- Building blocks\n- Paint\n- Nails\n- Binding wire\n- Delivery of construction materials within Lagos\n\n## Sales Approach\n\nWe sell directly from our shop and also take orders by phone and WhatsApp. Repeat customers may receive discounts based on order size and payment history.\n\n## Delivery Policy\n\nWe offer paid delivery within Lagos. Delivery fees depend on distance, vehicle size, and the quantity of goods ordered.\n\n## Credit Policy\n\nCredit is only given to trusted repeat customers. Every credit sale must include:\n\n1. Customer name\n2. Amount owed\n3. Payment deadline\n4. Outstanding balance\n\n## Business Goals\n\n- Increase monthly cement sales\n- Attract more contractors and property developers\n- Reduce unpaid customer debt\n- Improve inventory planning\n- Promote roofing sheets and paint more effectively\n- Build stronger relationships with repeat customers\n\n## Important Business Rules\n\n- Do not record a sale as credit unless credit is explicitly agreed.\n- Do not record delivery or transport as an expense unless the business paid for it.\n- Large cement orders may qualify for a discount.\n- Low-stock products should be reordered before they run out.",
-            "createdAt": "2026-07-19T19:55:19.835Z"
-          }
-        ],
+        "knowledge": [],
         "performance": {
           "runtime": "local",
           "model": null,
@@ -327,7 +563,12 @@
           "ragSeconds": 5.8,
           "cpuTemperatureC": null,
           "lastBenchmark": "2026-07-21T15:26:24.262Z"
-        }
+        },
+        "trialStartedAt": "2026-07-24T09:26:18.520Z",
+        "trialEndsAt": "2026-07-27T16:10:42.379Z",
+        "subscriptionExpiresAt": "2026-07-24T10:24:46.296Z",
+        "subscriptionStartedAt": "2026-07-24T10:19:09.314Z",
+        "licenseActivationId": "dev-test-activation"
       }
     }
   ],
@@ -371,6 +612,22 @@
     "20374c65be1f668290740158c6eff7108d5034e541a92919f8c84ed3442ff151": {
       "userId": "user_1783869975664_32bb6212",
       "createdAt": "2026-07-23T19:54:49.997Z"
+    },
+    "c654435b4718e906a505d6dd884f19e8ba728293496f84e30cfb3596a8305e07": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-27T20:19:02.259Z"
+    },
+    "bd02a7f714cb6993e1aec8af386e58b97f390dc8648aa62827598c478a1134b0": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-28T08:43:37.130Z"
+    },
+    "dd454e80d913ad9cbeacaf0ee476181d62dfae14e2bff3f10d252361e3127068": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-28T16:10:31.388Z"
+    },
+    "1743b2f0e7b3456029aaeedb85a892b2a9b75ce3a8eb4e6f6ccbbeeb9bfce932": {
+      "userId": "user_1783869975664_32bb6212",
+      "createdAt": "2026-07-29T10:30:44.686Z"
     }
   }
 }
